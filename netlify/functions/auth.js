@@ -646,6 +646,132 @@ function getDashboardHTML() {
             <div class="endpoint-url">GET /api/db/admin/search-analytics/popular</div>
         </div>
 
+        <!-- Upcoming Shows -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <span class="icon">&#128197;</span>
+                    Upcoming Shows
+                </div>
+                <button class="refresh-btn" onclick="checkUpcomingShows()">Refresh</button>
+            </div>
+            <div id="upcomingShowsContent">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Loading...
+                </div>
+            </div>
+            <div class="endpoint-url">GET /api/db/shows</div>
+        </div>
+
+        <!-- Response Times -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <span class="icon">&#9889;</span>
+                    API Response Times
+                </div>
+                <button class="refresh-btn" onclick="checkResponseTimes()">Refresh</button>
+            </div>
+            <div id="responseTimesContent">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Loading...
+                </div>
+            </div>
+            <div class="endpoint-url">GET /api/status</div>
+        </div>
+
+        <!-- Newsletter Subscribers -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <span class="icon">&#128236;</span>
+                    Newsletter Subscribers
+                </div>
+                <button class="refresh-btn" onclick="checkNewsletterStats()">Refresh</button>
+            </div>
+            <div id="newsletterContent">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Loading...
+                </div>
+            </div>
+            <div class="endpoint-url">GET /api/db/admin/newsletter/subscribers</div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <span class="icon">&#128337;</span>
+                    Recent Activity
+                </div>
+                <button class="refresh-btn" onclick="checkRecentActivity()">Refresh</button>
+            </div>
+            <div id="recentActivityContent">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Loading...
+                </div>
+            </div>
+            <div class="endpoint-url">New vendors/venues in last 7 days</div>
+        </div>
+
+        <!-- Top Favorited -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <span class="icon">&#11088;</span>
+                    Top Favorited Vendors
+                </div>
+                <button class="refresh-btn" onclick="checkTopFavorited()">Refresh</button>
+            </div>
+            <div id="topFavoritedContent">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Loading...
+                </div>
+            </div>
+            <div class="endpoint-url">Sorted by favorite_count</div>
+        </div>
+
+        <!-- Quick Site Links -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <span class="icon">&#127760;</span>
+                    Quick Site Links
+                </div>
+            </div>
+            <div class="external-links">
+                <a href="https://roundtopfinder.com" target="_blank" class="external-link">Homepage</a>
+                <a href="https://roundtopfinder.com/vendors" target="_blank" class="external-link">Vendors</a>
+                <a href="https://roundtopfinder.com/venues" target="_blank" class="external-link">Venues</a>
+                <a href="https://roundtopfinder.com/map" target="_blank" class="external-link">Map</a>
+                <a href="https://roundtopfinder.com/shows" target="_blank" class="external-link">Shows</a>
+                <a href="https://roundtopfinder.com/search" target="_blank" class="external-link">Search</a>
+            </div>
+        </div>
+
+        <!-- Error Monitor -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <span class="icon">&#128680;</span>
+                    Error Monitor
+                </div>
+                <button class="refresh-btn" onclick="checkErrorLog()">Refresh</button>
+            </div>
+            <div id="errorLogContent">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Loading...
+                </div>
+            </div>
+            <div class="endpoint-url">/api/admin/errors</div>
+        </div>
+
         <!-- Quick Actions -->
         <div class="card">
             <div class="card-header">
@@ -1200,15 +1326,284 @@ function getDashboardHTML() {
             updateLastUpdated();
         }
 
+        async function checkUpcomingShows() {
+            const container = document.getElementById('upcomingShowsContent');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
+
+            const result = await fetchAPI('/api/db/shows');
+
+            if (result.success) {
+                const shows = result.data.shows || [];
+                // Sort by date and get upcoming/current shows
+                const now = new Date();
+                const relevantShows = shows
+                    .filter(s => new Date(s.general_end_date) >= new Date(now.getTime() - 7*24*60*60*1000))
+                    .sort((a, b) => new Date(a.general_start_date) - new Date(b.general_start_date))
+                    .slice(0, 4);
+
+                if (relevantShows.length === 0) {
+                    container.innerHTML = '<div style="color: #888; text-align: center; padding: 20px;">No upcoming shows</div>';
+                } else {
+                    let html = '<div class="service-list">';
+                    for (const show of relevantShows) {
+                        const isActive = show.is_active;
+                        const statusColor = isActive ? '#4caf50' : '#4fc3f7';
+                        const statusText = isActive ? 'ACTIVE' : 'Upcoming';
+                        html += '<div class="service-item">' +
+                            '<div style="flex: 1;">' +
+                                '<div style="font-weight: 600;">' + show.name + '</div>' +
+                                '<div style="color: #888; font-size: 0.75rem;">' + show.general_start_date + ' - ' + show.general_end_date + '</div>' +
+                            '</div>' +
+                            '<span style="color: ' + statusColor + '; font-size: 0.75rem; font-weight: 600;">' + statusText + '</span>' +
+                        '</div>';
+                    }
+                    html += '</div>';
+                    container.innerHTML = html;
+                }
+                showRawResponse(result.data, '/api/db/shows');
+            } else {
+                container.innerHTML = '<div class="error-message">' + result.error + '</div>';
+            }
+            updateLastUpdated();
+        }
+
+        async function checkResponseTimes() {
+            const container = document.getElementById('responseTimesContent');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
+
+            const result = await fetchAPI('/api/status');
+
+            if (result.success) {
+                const times = result.data.response_times || {};
+                const overall = result.data.overall || 'unknown';
+
+                let html = '<div class="stats-row" style="margin-bottom: 15px;">' +
+                    '<div class="stat-box">' +
+                        '<div class="stat-number" style="color: ' + (overall === 'healthy' ? '#4caf50' : '#f44336') + ';">' + overall.toUpperCase() + '</div>' +
+                        '<div class="stat-label">Overall Status</div>' +
+                    '</div>' +
+                '</div>';
+
+                if (Object.keys(times).length > 0) {
+                    html += '<div class="service-list">';
+                    for (const [service, time] of Object.entries(times)) {
+                        const ms = parseInt(time);
+                        const color = ms < 200 ? '#4caf50' : (ms < 500 ? '#ffc107' : '#f44336');
+                        html += '<div class="service-item">' +
+                            '<span class="service-name">' + service + '</span>' +
+                            '<span style="color: ' + color + '; font-weight: 600;">' + time + '</span>' +
+                        '</div>';
+                    }
+                    html += '</div>';
+                }
+
+                container.innerHTML = html;
+                showRawResponse(result.data, '/api/status');
+            } else {
+                container.innerHTML = '<div class="error-message">' + result.error + '</div>';
+            }
+            updateLastUpdated();
+        }
+
+        async function checkNewsletterStats() {
+            const container = document.getElementById('newsletterContent');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
+
+            const [shopperResult, vendorResult] = await Promise.all([
+                fetchAPI('/api/db/admin/newsletter/subscribers?list_type=shopper'),
+                fetchAPI('/api/db/admin/newsletter/subscribers?list_type=vendor')
+            ]);
+
+            let shopperCount = 0;
+            let vendorCount = 0;
+
+            if (shopperResult.success) {
+                shopperCount = shopperResult.data.count || 0;
+            }
+            if (vendorResult.success) {
+                vendorCount = vendorResult.data.count || 0;
+            }
+
+            container.innerHTML =
+                '<div class="stats-row">' +
+                    '<div class="stat-box">' +
+                        '<div class="stat-number">' + shopperCount + '</div>' +
+                        '<div class="stat-label">Shoppers</div>' +
+                    '</div>' +
+                    '<div class="stat-box">' +
+                        '<div class="stat-number">' + vendorCount + '</div>' +
+                        '<div class="stat-label">Vendors</div>' +
+                    '</div>' +
+                    '<div class="stat-box">' +
+                        '<div class="stat-number">' + (shopperCount + vendorCount) + '</div>' +
+                        '<div class="stat-label">Total</div>' +
+                    '</div>' +
+                '</div>';
+
+            showRawResponse({ shoppers: shopperCount, vendors: vendorCount, total: shopperCount + vendorCount }, 'Newsletter Stats');
+            updateLastUpdated();
+        }
+
+        async function checkRecentActivity() {
+            const container = document.getElementById('recentActivityContent');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
+
+            const [vendorResult, venueResult] = await Promise.all([
+                fetchAPI('/api/db/vendors'),
+                fetchAPI('/api/db/venues')
+            ]);
+
+            const sevenDaysAgo = new Date();
+            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+            let recentItems = [];
+
+            if (vendorResult.success) {
+                const vendors = vendorResult.data.vendors || [];
+                for (const v of vendors) {
+                    if (v.created_at && new Date(v.created_at) >= sevenDaysAgo) {
+                        recentItems.push({ name: v.business_name, type: 'Vendor', date: v.created_at });
+                    }
+                }
+            }
+
+            if (venueResult.success) {
+                const venues = venueResult.data.venues || [];
+                for (const v of venues) {
+                    if (v.created_at && new Date(v.created_at) >= sevenDaysAgo) {
+                        recentItems.push({ name: v.name, type: 'Venue', date: v.created_at });
+                    }
+                }
+            }
+
+            // Sort by date descending
+            recentItems.sort((a, b) => new Date(b.date) - new Date(a.date));
+            recentItems = recentItems.slice(0, 8);
+
+            if (recentItems.length === 0) {
+                container.innerHTML = '<div style="color: #888; text-align: center; padding: 20px;">No new activity in the last 7 days</div>';
+            } else {
+                let html = '<div class="service-list">';
+                for (const item of recentItems) {
+                    const typeColor = item.type === 'Vendor' ? '#4fc3f7' : '#ce93d8';
+                    html += '<div class="service-item">' +
+                        '<span class="service-name" style="flex: 1;">' + item.name + '</span>' +
+                        '<span style="color: ' + typeColor + '; font-size: 0.75rem; margin-right: 10px;">' + item.type + '</span>' +
+                        '<span style="color: #888; font-size: 0.75rem;">' + item.date.slice(0, 10) + '</span>' +
+                    '</div>';
+                }
+                html += '</div>';
+                container.innerHTML = html;
+            }
+
+            showRawResponse({ recent_items: recentItems.length, period: '7 days' }, 'Recent Activity');
+            updateLastUpdated();
+        }
+
+        async function checkTopFavorited() {
+            const container = document.getElementById('topFavoritedContent');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
+
+            const result = await fetchAPI('/api/db/vendors');
+
+            if (result.success) {
+                const vendors = result.data.vendors || [];
+                const sorted = vendors
+                    .filter(v => v.favorite_count > 0)
+                    .sort((a, b) => (b.favorite_count || 0) - (a.favorite_count || 0))
+                    .slice(0, 5);
+
+                if (sorted.length === 0) {
+                    container.innerHTML = '<div style="color: #888; text-align: center; padding: 20px;">No favorites yet</div>';
+                } else {
+                    let html = '<div class="service-list">';
+                    for (const v of sorted) {
+                        html += '<div class="service-item">' +
+                            '<span class="service-name" style="flex: 1;">' + v.business_name + '</span>' +
+                            '<span style="color: #ffc107; font-weight: 600;">&#11088; ' + v.favorite_count + '</span>' +
+                        '</div>';
+                    }
+                    html += '</div>';
+                    container.innerHTML = html;
+                }
+                showRawResponse(result.data, '/api/db/vendors (sorted by favorites)');
+            } else {
+                container.innerHTML = '<div class="error-message">' + result.error + '</div>';
+            }
+            updateLastUpdated();
+        }
+
+        async function checkErrorLog() {
+            const container = document.getElementById('errorLogContent');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
+
+            const result = await fetchAPI('/api/admin/errors');
+
+            if (result.success) {
+                const errors = result.data.errors || [];
+                const count = result.data.count || 0;
+
+                if (count === 0) {
+                    container.innerHTML = '<div class="status up" style="margin: 10px 0;"><span class="indicator"></span>No errors logged</div>';
+                } else {
+                    let html = '<div class="stat-row">' +
+                        '<span class="stat-label">Recent Errors</span>' +
+                        '<span class="stat-value" style="color: #e74c3c;">' + count + '</span>' +
+                    '</div>';
+                    html += '<div style="display: flex; gap: 10px; margin: 10px 0;">' +
+                        '<button class="action-btn" onclick="clearErrorLog()" style="flex: 1; padding: 8px;">' +
+                            '<div class="action-label">Clear Log</div>' +
+                        '</button>' +
+                    '</div>';
+                    html += '<div class="service-list" style="max-height: 200px; overflow-y: auto;">';
+                    const recent = errors.slice(-10).reverse();
+                    for (const err of recent) {
+                        const time = new Date(err.timestamp).toLocaleString();
+                        html += '<div class="service-item" style="flex-direction: column; align-items: flex-start;">' +
+                            '<div style="display: flex; width: 100%; justify-content: space-between;">' +
+                                '<span style="color: #e74c3c; font-weight: 600;">' + (err.error_type || 'Error') + '</span>' +
+                                '<span style="color: #888; font-size: 11px;">' + time + '</span>' +
+                            '</div>' +
+                            '<div style="font-size: 12px; color: #ccc; margin-top: 4px;">' + (err.endpoint || '') + '</div>' +
+                            '<div style="font-size: 11px; color: #888; margin-top: 2px; word-break: break-word;">' + (err.message || '').substring(0, 100) + '</div>' +
+                        '</div>';
+                    }
+                    html += '</div>';
+                    container.innerHTML = html;
+                }
+                showRawResponse(result.data, '/api/admin/errors');
+            } else {
+                container.innerHTML = '<div class="error-message">' + result.error + '</div>';
+            }
+            updateLastUpdated();
+        }
+
+        async function clearErrorLog() {
+            if (!confirm('Clear all logged errors?')) return;
+            const response = await fetch(API_BASE + '/api/admin/errors', { method: 'DELETE' });
+            const data = await response.json();
+            if (data.success) {
+                checkErrorLog();
+            } else {
+                alert('Failed to clear error log');
+            }
+        }
+
         function refreshAll() {
             checkHealth();
-            setTimeout(function() { checkStatus(); }, 500);
-            setTimeout(function() { checkIndexStats(); }, 1000);
-            setTimeout(function() { checkVendorStats(); }, 1500);
-            setTimeout(function() { checkAIStats(); }, 2000);
-            setTimeout(function() { checkProductSync(); }, 2500);
-            setTimeout(function() { checkSearchAnalytics(); }, 3000);
-            setTimeout(function() { checkPopularSearches(); }, 3500);
+            setTimeout(function() { checkStatus(); }, 300);
+            setTimeout(function() { checkIndexStats(); }, 600);
+            setTimeout(function() { checkVendorStats(); }, 900);
+            setTimeout(function() { checkAIStats(); }, 1200);
+            setTimeout(function() { checkProductSync(); }, 1500);
+            setTimeout(function() { checkSearchAnalytics(); }, 1800);
+            setTimeout(function() { checkPopularSearches(); }, 2100);
+            setTimeout(function() { checkUpcomingShows(); }, 2400);
+            setTimeout(function() { checkResponseTimes(); }, 2700);
+            setTimeout(function() { checkNewsletterStats(); }, 3000);
+            setTimeout(function() { checkRecentActivity(); }, 3300);
+            setTimeout(function() { checkTopFavorited(); }, 3600);
+            setTimeout(function() { checkErrorLog(); }, 3900);
         }
 
         window.onload = function() {
