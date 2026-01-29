@@ -968,13 +968,16 @@ function getDashboardHTML() {
             const result = await fetchAPI('/api/db/shows/current');
 
             if (result.success && result.data) {
-                const show = result.data;
+                // API returns { show: { name, general_start_date, general_end_date, ... } }
+                const show = result.data.show || result.data;
+                const startDate = show.general_start_date || show.start_date;
+                const endDate = show.general_end_date || show.end_date;
                 container.innerHTML =
                     '<div class="metric" style="margin-top: 10px;">' +
                         '<div class="metric-label">Current/Next Show</div>' +
                         '<div class="metric-value" style="font-size: 1.1rem;">' + (show.name || 'No active show') + '</div>' +
                         '<div style="color: #888; font-size: 0.85rem; margin-top: 5px;">' +
-                            (show.start_date ? (show.start_date + ' - ' + show.end_date) : '') +
+                            (startDate ? (startDate + ' - ' + endDate) : '') +
                         '</div>' +
                     '</div>';
                 showRawResponse(result.data, '/api/db/shows/current');
