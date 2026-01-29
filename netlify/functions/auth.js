@@ -568,7 +568,43 @@ function getDashboardHTML() {
                     Loading...
                 </div>
             </div>
-            <div class="endpoint-url">GET /api/vendors/stats/vendors</div>
+            <div class="endpoint-url">GET /api/db/vendors + /api/db/venues</div>
+        </div>
+
+        <!-- Search Analytics -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <span class="icon">&#128200;</span>
+                    Search Analytics (30 days)
+                </div>
+                <button class="refresh-btn" onclick="checkSearchAnalytics()">Refresh</button>
+            </div>
+            <div id="searchAnalyticsContent">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Loading...
+                </div>
+            </div>
+            <div class="endpoint-url">GET /api/db/admin/search-analytics/stats</div>
+        </div>
+
+        <!-- Popular Searches -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <span class="icon">&#128293;</span>
+                    Popular Searches (7 days)
+                </div>
+                <button class="refresh-btn" onclick="checkPopularSearches()">Refresh</button>
+            </div>
+            <div id="popularSearchesContent">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Loading...
+                </div>
+            </div>
+            <div class="endpoint-url">GET /api/db/admin/search-analytics/popular</div>
         </div>
 
         <!-- Quick Actions -->
@@ -734,19 +770,16 @@ function getDashboardHTML() {
             const result = await fetchAPI('/api/health');
 
             if (result.success) {
-                const status = result.data.status === 'ok' ? 'ok' : 'error';
+                const isHealthy = result.data.status === 'ok' || result.data.status === 'healthy';
                 container.innerHTML =
                     '<div class="metric-grid">' +
                         '<div class="metric">' +
                             '<div class="metric-label">Status</div>' +
-                            '<div class="metric-value ' + (status === 'ok' ? 'good' : 'error') + '">' + (result.data.status ? result.data.status.toUpperCase() : 'UNKNOWN') + '</div>' +
+                            '<div class="metric-value ' + (isHealthy ? 'good' : 'error') + '">' + (result.data.status ? result.data.status.toUpperCase() : 'UNKNOWN') + '</div>' +
                         '</div>' +
                         '<div class="metric">' +
-                            '<div class="metric-label">Response</div>' +
-                            '<span class="status-indicator status-' + status + '">' +
-                                '<span class="status-dot"></span>' +
-                                (status === 'ok' ? 'Healthy' : 'Issues Detected') +
-                            '</span>' +
+                            '<div class="metric-label">Version</div>' +
+                            '<div class="metric-value" style="font-size: 1rem;">' + (result.data.version || '—') + '</div>' +
                         '</div>' +
                     '</div>';
                 showRawResponse(result.data, '/api/health');
@@ -764,21 +797,27 @@ function getDashboardHTML() {
 
             if (result.success) {
                 const data = result.data;
+                const services = data.services || {};
                 let servicesHtml = '<div class="service-list">';
 
-                const services = [
+                const serviceList = [
                     { name: 'Supabase', key: 'supabase' },
                     { name: 'Pinecone', key: 'pinecone' },
-                    { name: 'Groq LLM', key: 'groq' },
-                    { name: 'Claude AI', key: 'anthropic' },
-                    { name: 'Baseten GPU', key: 'baseten' },
+                    { name: 'Groq LLM', key: 'ai_agent', subkey: 'groq' },
+                    { name: 'Claude AI', key: 'ai_agent', subkey: 'claude' },
+                    { name: 'Baseten GPU', key: 'clip_model' },
                 ];
 
-                for (const service of services) {
-                    const status = data[service.key] || data[service.key.toLowerCase()] || 'unknown';
-                    const isOk = typeof status === 'string' ?
-                        status.toLowerCase().includes('ok') || status.toLowerCase().includes('connected') :
-                        status === true;
+                for (const service of serviceList) {
+                    let isOk = false;
+                    const svc = services[service.key];
+                    if (svc) {
+                        if (service.subkey) {
+                            isOk = svc[service.subkey] === 'connected';
+                        } else {
+                            isOk = svc.status === 'up' || svc.status === 'configured';
+                        }
+                    }
 
                     servicesHtml +=
                         '<div class="service-item">' +
@@ -807,21 +846,32 @@ function getDashboardHTML() {
 
             if (result.success) {
                 const data = result.data;
-                container.innerHTML =
-                    '<div class="stats-row">' +
+                const namespaces = data.namespaces || {};
+                const namespaceCount = typeof namespaces === 'object' ? Object.keys(namespaces).length : 0;
+
+                let html = '<div class="stats-row" style="margin-bottom: 15px;">' +
                         '<div class="stat-box">' +
-                            '<div class="stat-number">' + (data.total_vectors ? data.total_vectors.toLocaleString() : (data.totalVectors ? data.totalVectors.toLocaleString() : '—')) + '</div>' +
+                            '<div class="stat-number">' + (data.total_vectors ? data.total_vectors.toLocaleString() : '—') + '</div>' +
                             '<div class="stat-label">Total Vectors</div>' +
                         '</div>' +
                         '<div class="stat-box">' +
-                            '<div class="stat-number">' + (data.namespaces || data.namespace_count || '—') + '</div>' +
+                            '<div class="stat-number">' + namespaceCount + '</div>' +
                             '<div class="stat-label">Namespaces</div>' +
                         '</div>' +
-                        '<div class="stat-box">' +
-                            '<div class="stat-number">' + (data.dimension || 768) + '</div>' +
-                            '<div class="stat-label">Dimensions</div>' +
-                        '</div>' +
                     '</div>';
+
+                if (typeof namespaces === 'object' && Object.keys(namespaces).length > 0) {
+                    html += '<div class="service-list">';
+                    for (const [name, count] of Object.entries(namespaces)) {
+                        html += '<div class="service-item">' +
+                            '<span class="service-name">' + name + '</span>' +
+                            '<span style="color: #4fc3f7; font-weight: 600;">' + count.toLocaleString() + '</span>' +
+                        '</div>';
+                    }
+                    html += '</div>';
+                }
+
+                container.innerHTML = html;
                 showRawResponse(result.data, '/api/vendors/stats/index');
             } else {
                 container.innerHTML = '<div class="error-message">' + result.error + '</div>';
@@ -833,29 +883,53 @@ function getDashboardHTML() {
             const container = document.getElementById('vendorContent');
             container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading stats...</div>';
 
-            const result = await fetchAPI('/api/vendors/stats/vendors');
+            // Fetch both vendors and venues counts from the database
+            const [vendorResult, venueResult] = await Promise.all([
+                fetchAPI('/api/db/vendors?limit=1'),
+                fetchAPI('/api/db/venues?limit=1')
+            ]);
 
-            if (result.success) {
-                const data = result.data;
-                container.innerHTML =
-                    '<div class="stats-row">' +
-                        '<div class="stat-box">' +
-                            '<div class="stat-number">' + (data.total || data.total_vendors || '—') + '</div>' +
-                            '<div class="stat-label">Total Vendors</div>' +
-                        '</div>' +
-                        '<div class="stat-box">' +
-                            '<div class="stat-number">' + (data.active || data.with_products || '—') + '</div>' +
-                            '<div class="stat-label">Active</div>' +
-                        '</div>' +
-                        '<div class="stat-box">' +
-                            '<div class="stat-number">' + (data.products || data.total_products || '—') + '</div>' +
-                            '<div class="stat-label">Products</div>' +
-                        '</div>' +
-                    '</div>';
-                showRawResponse(result.data, '/api/vendors/stats/vendors');
-            } else {
-                container.innerHTML = '<div class="error-message">' + result.error + '</div>';
+            let vendorCount = '—';
+            let venueCount = '—';
+
+            if (vendorResult.success) {
+                vendorCount = vendorResult.data.vendors ? vendorResult.data.vendors.length : 0;
+                // If there's a count field, use it; otherwise fetch all to count
+                if (vendorResult.data.count !== undefined) {
+                    vendorCount = vendorResult.data.count;
+                } else {
+                    const fullResult = await fetchAPI('/api/db/vendors');
+                    if (fullResult.success) {
+                        vendorCount = fullResult.data.vendors ? fullResult.data.vendors.length : 0;
+                    }
+                }
             }
+
+            if (venueResult.success) {
+                venueCount = venueResult.data.venues ? venueResult.data.venues.length : 0;
+                if (venueResult.data.count !== undefined) {
+                    venueCount = venueResult.data.count;
+                } else {
+                    const fullResult = await fetchAPI('/api/db/venues');
+                    if (fullResult.success) {
+                        venueCount = fullResult.data.venues ? fullResult.data.venues.length : 0;
+                    }
+                }
+            }
+
+            container.innerHTML =
+                '<div class="stats-row">' +
+                    '<div class="stat-box">' +
+                        '<div class="stat-number">' + vendorCount + '</div>' +
+                        '<div class="stat-label">Vendors in DB</div>' +
+                    '</div>' +
+                    '<div class="stat-box">' +
+                        '<div class="stat-number">' + venueCount + '</div>' +
+                        '<div class="stat-label">Venues in DB</div>' +
+                    '</div>' +
+                '</div>';
+
+            showRawResponse({ vendors: vendorCount, venues: venueCount }, '/api/db/vendors + /api/db/venues');
             updateLastUpdated();
         }
 
@@ -923,11 +997,79 @@ function getDashboardHTML() {
             }
         }
 
+        async function checkSearchAnalytics() {
+            const container = document.getElementById('searchAnalyticsContent');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
+
+            const result = await fetchAPI('/api/db/admin/search-analytics/stats');
+
+            if (result.success) {
+                const data = result.data;
+                const byType = data.by_type || {};
+                container.innerHTML =
+                    '<div class="stats-row" style="margin-bottom: 15px;">' +
+                        '<div class="stat-box">' +
+                            '<div class="stat-number">' + (data.total_searches || 0) + '</div>' +
+                            '<div class="stat-label">Total Searches</div>' +
+                        '</div>' +
+                        '<div class="stat-box">' +
+                            '<div class="stat-number">' + (data.unique_sessions || 0) + '</div>' +
+                            '<div class="stat-label">Unique Sessions</div>' +
+                        '</div>' +
+                        '<div class="stat-box">' +
+                            '<div class="stat-number" style="color: ' + (parseFloat(data.zero_result_rate) > 50 ? '#f44336' : '#4caf50') + '">' + (data.zero_result_rate || '0%') + '</div>' +
+                            '<div class="stat-label">Zero Results</div>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="service-list">' +
+                        '<div class="service-item"><span class="service-name">Text Searches</span><span style="color: #4fc3f7; font-weight: 600;">' + (byType.text || 0) + '</span></div>' +
+                        '<div class="service-item"><span class="service-name">Chat Queries</span><span style="color: #4fc3f7; font-weight: 600;">' + (byType.chat || 0) + '</span></div>' +
+                        '<div class="service-item"><span class="service-name">Visual Searches</span><span style="color: #4fc3f7; font-weight: 600;">' + (byType.visual || 0) + '</span></div>' +
+                    '</div>';
+                showRawResponse(result.data, '/api/db/admin/search-analytics/stats');
+            } else {
+                container.innerHTML = '<div class="error-message">' + result.error + '</div>';
+            }
+            updateLastUpdated();
+        }
+
+        async function checkPopularSearches() {
+            const container = document.getElementById('popularSearchesContent');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
+
+            const result = await fetchAPI('/api/db/admin/search-analytics/popular?limit=8');
+
+            if (result.success) {
+                const searches = result.data.searches || [];
+                if (searches.length === 0) {
+                    container.innerHTML = '<div style="color: #888; text-align: center; padding: 20px;">No searches recorded yet</div>';
+                } else {
+                    let html = '<div class="service-list">';
+                    for (const search of searches) {
+                        const typeColor = search.search_type === 'chat' ? '#a5d6a7' : (search.search_type === 'visual' ? '#ce93d8' : '#4fc3f7');
+                        html += '<div class="service-item">' +
+                            '<span class="service-name" style="flex: 1;">' + search.query + '</span>' +
+                            '<span style="color: ' + typeColor + '; font-size: 0.75rem; margin-right: 10px;">' + search.search_type + '</span>' +
+                            '<span style="color: #4fc3f7; font-weight: 600;">' + search.count + '</span>' +
+                        '</div>';
+                    }
+                    html += '</div>';
+                    container.innerHTML = html;
+                }
+                showRawResponse(result.data, '/api/db/admin/search-analytics/popular');
+            } else {
+                container.innerHTML = '<div class="error-message">' + result.error + '</div>';
+            }
+            updateLastUpdated();
+        }
+
         function refreshAll() {
             checkHealth();
             setTimeout(function() { checkStatus(); }, 500);
             setTimeout(function() { checkIndexStats(); }, 1000);
             setTimeout(function() { checkVendorStats(); }, 1500);
+            setTimeout(function() { checkSearchAnalytics(); }, 2000);
+            setTimeout(function() { checkPopularSearches(); }, 2500);
         }
 
         window.onload = function() {
