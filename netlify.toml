@@ -1,0 +1,19 @@
+# Netlify Configuration for RTF Admin Dashboard
+
+[build]
+  publish = "public"
+  functions = "netlify/functions"
+
+# Redirect all requests through the auth function for password protection
+[[redirects]]
+  from = "/*"
+  to = "/.netlify/functions/auth"
+  status = 200
+
+# Headers for security
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"

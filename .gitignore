@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+
+# Environment files (credentials should NEVER be in git)
+.env
+.env.local
+.env.production
+
+# Netlify
+.netlify/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
