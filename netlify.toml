@@ -4,7 +4,18 @@
   publish = "public"
   functions = "netlify/functions"
 
-# Redirect all requests through the auth function for password protection
+# Serve favicon files directly (before auth redirect)
+[[redirects]]
+  from = "/favicon-16x16.png"
+  to = "/favicon-16x16.png"
+  status = 200
+
+[[redirects]]
+  from = "/favicon-32x32.png"
+  to = "/favicon-32x32.png"
+  status = 200
+
+# Redirect all other requests through the auth function for password protection
 [[redirects]]
   from = "/*"
   to = "/.netlify/functions/auth"
