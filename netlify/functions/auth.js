@@ -571,6 +571,42 @@ function getDashboardHTML() {
             <div class="endpoint-url">GET /api/db/vendors + /api/db/venues</div>
         </div>
 
+        <!-- AI Usage Stats -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <span class="icon">&#129302;</span>
+                    AI Usage
+                </div>
+                <button class="refresh-btn" onclick="checkAIStats()">Refresh</button>
+            </div>
+            <div id="aiStatsContent">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Loading...
+                </div>
+            </div>
+            <div class="endpoint-url">GET /api/agent/stats</div>
+        </div>
+
+        <!-- Product Sync Status -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <span class="icon">&#128230;</span>
+                    Product Sync Status
+                </div>
+                <button class="refresh-btn" onclick="checkProductSync()">Refresh</button>
+            </div>
+            <div id="productSyncContent">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Loading...
+                </div>
+            </div>
+            <div class="endpoint-url">GET /api/scrape/products/status</div>
+        </div>
+
         <!-- Search Analytics -->
         <div class="card">
             <div class="card-header">
@@ -882,6 +918,91 @@ function getDashboardHTML() {
             updateLastUpdated();
         }
 
+        async function checkAIStats() {
+            const container = document.getElementById('aiStatsContent');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
+
+            const result = await fetchAPI('/api/agent/stats');
+
+            if (result.success) {
+                const data = result.data;
+                const groqCalls = data.groq_calls || 0;
+                const claudeCalls = data.claude_calls || 0;
+                const totalQueries = data.total_queries || 0;
+                const freePercent = parseFloat(data.free_percentage) || 0;
+
+                container.innerHTML =
+                    '<div class="stats-row" style="margin-bottom: 15px;">' +
+                        '<div class="stat-box">' +
+                            '<div class="stat-number" style="color: #4caf50;">' + groqCalls + '</div>' +
+                            '<div class="stat-label">Groq (Free)</div>' +
+                        '</div>' +
+                        '<div class="stat-box">' +
+                            '<div class="stat-number" style="color: #ff9800;">' + claudeCalls + '</div>' +
+                            '<div class="stat-label">Claude (Paid)</div>' +
+                        '</div>' +
+                        '<div class="stat-box">' +
+                            '<div class="stat-number">' + (data.cost_estimate || '$0.00') + '</div>' +
+                            '<div class="stat-label">Est. Cost</div>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="service-list">' +
+                        '<div class="service-item"><span class="service-name">Active Sessions</span><span style="color: #4fc3f7; font-weight: 600;">' + (data.active_sessions || 0) + '</span></div>' +
+                        '<div class="service-item"><span class="service-name">Free Tier Usage</span><span style="color: ' + (freePercent > 80 ? '#4caf50' : '#ff9800') + '; font-weight: 600;">' + freePercent.toFixed(0) + '%</span></div>' +
+                    '</div>';
+                showRawResponse(result.data, '/api/agent/stats');
+            } else {
+                container.innerHTML = '<div class="error-message">' + result.error + '</div>';
+            }
+            updateLastUpdated();
+        }
+
+        async function checkProductSync() {
+            const container = document.getElementById('productSyncContent');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
+
+            const result = await fetchAPI('/api/scrape/products/status');
+
+            if (result.success) {
+                const data = result.data;
+                const inSync = data.in_sync;
+                const supabaseCount = data.supabase_tracked_vectors || 0;
+                const pineconeCount = data.pinecone_products_namespace || 0;
+                const vendors = data.vendors || [];
+
+                let vendorHtml = '';
+                for (const v of vendors.slice(0, 5)) {
+                    const statusColor = v.scrape_status === 'completed' ? '#4caf50' : (v.scrape_status === 'pending' ? '#ffc107' : '#f44336');
+                    vendorHtml += '<div class="service-item">' +
+                        '<span class="service-name" style="flex: 1;">' + (v.scraper_type || 'unknown') + '</span>' +
+                        '<span style="color: #888; font-size: 0.75rem; margin-right: 10px;">' + (v.products_synced || 0) + ' products</span>' +
+                        '<span style="color: ' + statusColor + '; font-size: 0.75rem;">' + (v.scrape_status || 'unknown') + '</span>' +
+                    '</div>';
+                }
+
+                container.innerHTML =
+                    '<div class="stats-row" style="margin-bottom: 15px;">' +
+                        '<div class="stat-box">' +
+                            '<div class="stat-number">' + pineconeCount.toLocaleString() + '</div>' +
+                            '<div class="stat-label">Indexed Products</div>' +
+                        '</div>' +
+                        '<div class="stat-box">' +
+                            '<div class="stat-number">' + supabaseCount.toLocaleString() + '</div>' +
+                            '<div class="stat-label">DB Tracked</div>' +
+                        '</div>' +
+                        '<div class="stat-box">' +
+                            '<div class="stat-number" style="color: ' + (inSync ? '#4caf50' : '#f44336') + ';">' + (inSync ? 'Yes' : 'No') + '</div>' +
+                            '<div class="stat-label">In Sync</div>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="service-list">' + vendorHtml + '</div>';
+                showRawResponse(result.data, '/api/scrape/products/status');
+            } else {
+                container.innerHTML = '<div class="error-message">' + result.error + '</div>';
+            }
+            updateLastUpdated();
+        }
+
         async function checkVendorStats() {
             const container = document.getElementById('vendorContent');
             container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading stats...</div>';
@@ -1084,8 +1205,10 @@ function getDashboardHTML() {
             setTimeout(function() { checkStatus(); }, 500);
             setTimeout(function() { checkIndexStats(); }, 1000);
             setTimeout(function() { checkVendorStats(); }, 1500);
-            setTimeout(function() { checkSearchAnalytics(); }, 2000);
-            setTimeout(function() { checkPopularSearches(); }, 2500);
+            setTimeout(function() { checkAIStats(); }, 2000);
+            setTimeout(function() { checkProductSync(); }, 2500);
+            setTimeout(function() { checkSearchAnalytics(); }, 3000);
+            setTimeout(function() { checkPopularSearches(); }, 3500);
         }
 
         window.onload = function() {
