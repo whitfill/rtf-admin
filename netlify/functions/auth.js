@@ -578,7 +578,10 @@ function getDashboardHTML() {
                     <span class="icon">&#128200;</span>
                     Search Analytics (30 days)
                 </div>
-                <button class="refresh-btn" onclick="checkSearchAnalytics()">Refresh</button>
+                <div style="display: flex; gap: 8px;">
+                    <button class="refresh-btn" onclick="checkSearchAnalytics()">Refresh</button>
+                    <button class="refresh-btn" style="border-color: #f44336; color: #f44336;" onclick="resetSearchAnalytics()">Reset</button>
+                </div>
             </div>
             <div id="searchAnalyticsContent">
                 <div class="loading">
@@ -994,6 +997,33 @@ function getDashboardHTML() {
                 showRawResponse(result.data, '/api/db/shows/current');
             } else {
                 container.innerHTML = '<div class="metric"><div class="metric-label">Current Show</div><div class="metric-value">No active show</div></div>';
+            }
+        }
+
+        async function resetSearchAnalytics() {
+            if (!confirm('Are you sure you want to clear all search analytics data? This cannot be undone.')) {
+                return;
+            }
+
+            const container = document.getElementById('searchAnalyticsContent');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div>Resetting...</div>';
+
+            try {
+                const response = await fetch(API_BASE + '/api/db/admin/search-analytics/reset', { method: 'DELETE' });
+                const data = await response.json();
+
+                if (response.ok) {
+                    container.innerHTML = '<div class="status-indicator status-ok"><span class="status-dot"></span> ' + data.message + '</div>';
+                    // Refresh both analytics cards after reset
+                    setTimeout(function() {
+                        checkSearchAnalytics();
+                        checkPopularSearches();
+                    }, 1500);
+                } else {
+                    container.innerHTML = '<div class="error-message">Failed: ' + (data.detail || 'Unknown error') + '</div>';
+                }
+            } catch (error) {
+                container.innerHTML = '<div class="error-message">Error: ' + error.message + '</div>';
             }
         }
 
