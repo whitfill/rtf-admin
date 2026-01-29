@@ -9,6 +9,7 @@
   from = "/*"
   to = "/.netlify/functions/auth"
   status = 200
+  force = true
 
 # Headers for security
 [[headers]]
