@@ -886,10 +886,10 @@ function getDashboardHTML() {
             const container = document.getElementById('vendorContent');
             container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading stats...</div>';
 
-            // Fetch both vendors and venues counts from the database
+            // Fetch both vendors and venues counts from the database (no limit to get total count)
             const [vendorResult, venueResult] = await Promise.all([
-                fetchAPI('/api/db/vendors?limit=1'),
-                fetchAPI('/api/db/venues?limit=1')
+                fetchAPI('/api/db/vendors'),
+                fetchAPI('/api/db/venues')
             ]);
 
             let vendorCount = '—';
@@ -897,27 +897,10 @@ function getDashboardHTML() {
 
             if (vendorResult.success) {
                 vendorCount = vendorResult.data.vendors ? vendorResult.data.vendors.length : 0;
-                // If there's a count field, use it; otherwise fetch all to count
-                if (vendorResult.data.count !== undefined) {
-                    vendorCount = vendorResult.data.count;
-                } else {
-                    const fullResult = await fetchAPI('/api/db/vendors');
-                    if (fullResult.success) {
-                        vendorCount = fullResult.data.vendors ? fullResult.data.vendors.length : 0;
-                    }
-                }
             }
 
             if (venueResult.success) {
                 venueCount = venueResult.data.venues ? venueResult.data.venues.length : 0;
-                if (venueResult.data.count !== undefined) {
-                    venueCount = venueResult.data.count;
-                } else {
-                    const fullResult = await fetchAPI('/api/db/venues');
-                    if (fullResult.success) {
-                        venueCount = fullResult.data.venues ? fullResult.data.venues.length : 0;
-                    }
-                }
             }
 
             container.innerHTML =
