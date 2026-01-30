@@ -1654,16 +1654,18 @@ function getDashboardHTML() {
 
                 for (const p of products) {
                     const imgUrl = p.image_url || '';
-                    const name = (p.name || 'Unknown').substring(0, 30);
+                    const name = (p.name || 'Unknown').substring(0, 50);
+                    const fullName = p.name || 'Unknown';
                     const pid = p.id;
                     html += '<div class="product-thumb" id="product-' + pid + '" style="position: relative; background: #2a2a3e; border-radius: 4px; overflow: hidden;">';
                     html += '<button data-pid="' + pid + '" onclick="deleteProduct(this.dataset.pid)" style="position: absolute; top: 5px; right: 5px; background: #e74c3c; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; font-weight: bold; z-index: 10;">&times;</button>';
+                    html += '<button data-pid="' + pid + '" data-name="' + fullName.replace(/"/g, '&quot;') + '" onclick="editProductName(this.dataset.pid, this.dataset.name)" style="position: absolute; top: 5px; left: 5px; background: #3498db; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; font-size: 12px; z-index: 10;">&#9998;</button>';
                     if (imgUrl) {
                         html += '<img src="' + imgUrl + '" style="width: 100%; height: 120px; object-fit: cover;" onerror="this.style.display=&apos;none&apos;">';
                     } else {
                         html += '<div style="width: 100%; height: 120px; background: #3a3a4e; display: flex; align-items: center; justify-content: center; color: #666;">No image</div>';
                     }
-                    html += '<div style="padding: 8px; font-size: 11px; color: #ccc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">' + name + '</div>';
+                    html += '<div id="name-' + pid + '" style="padding: 8px; font-size: 11px; color: #ccc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="' + fullName.replace(/"/g, '&quot;') + '">' + name + '</div>';
                     html += '</div>';
                 }
                 html += '</div>';
@@ -1691,6 +1693,41 @@ function getDashboardHTML() {
                     }
                 } else {
                     alert('Failed to delete: ' + (data.detail || 'Unknown error'));
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        function editProductName(productId, currentName) {
+            const newName = prompt('Enter new product name:', currentName);
+            if (newName === null || newName.trim() === '' || newName === currentName) {
+                return;
+            }
+            saveProductName(productId, newName.trim());
+        }
+
+        async function saveProductName(productId, newName) {
+            try {
+                const response = await fetch(API_BASE + '/api/admin/products/' + productId, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: newName })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    const nameEl = document.getElementById('name-' + productId);
+                    if (nameEl) {
+                        nameEl.textContent = newName.substring(0, 50);
+                        nameEl.title = newName;
+                    }
+                    const editBtn = document.querySelector('[data-pid="' + productId + '"][onclick*="editProductName"]');
+                    if (editBtn) {
+                        editBtn.dataset.name = newName;
+                    }
+                } else {
+                    alert('Failed to update: ' + (data.detail || 'Unknown error'));
                 }
             } catch (e) {
                 alert('Error: ' + e.message);
