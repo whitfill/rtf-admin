@@ -1655,10 +1655,11 @@ function getDashboardHTML() {
                 for (const p of products) {
                     const imgUrl = p.image_url || '';
                     const name = (p.name || 'Unknown').substring(0, 30);
-                    html += '<div class="product-thumb" id="product-' + p.id + '" style="position: relative; background: #2a2a3e; border-radius: 4px; overflow: hidden;">';
-                    html += '<button onclick="deleteProduct(\'' + p.id + '\')" style="position: absolute; top: 5px; right: 5px; background: #e74c3c; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; font-weight: bold; z-index: 10;">&times;</button>';
+                    const pid = p.id;
+                    html += '<div class="product-thumb" id="product-' + pid + '" style="position: relative; background: #2a2a3e; border-radius: 4px; overflow: hidden;">';
+                    html += '<button data-pid="' + pid + '" onclick="deleteProduct(this.dataset.pid)" style="position: absolute; top: 5px; right: 5px; background: #e74c3c; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; font-weight: bold; z-index: 10;">&times;</button>';
                     if (imgUrl) {
-                        html += '<img src="' + imgUrl + '" style="width: 100%; height: 120px; object-fit: cover;" onerror="this.style.display=\'none\'">';
+                        html += '<img src="' + imgUrl + '" style="width: 100%; height: 120px; object-fit: cover;" onerror="this.style.display=&apos;none&apos;">';
                     } else {
                         html += '<div style="width: 100%; height: 120px; background: #3a3a4e; display: flex; align-items: center; justify-content: center; color: #666;">No image</div>';
                     }
