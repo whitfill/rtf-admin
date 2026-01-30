@@ -774,6 +774,28 @@ function getDashboardHTML() {
             <div class="endpoint-url">/api/admin/errors</div>
         </div>
 
+        <!-- Product Management -->
+        <div class="card" style="grid-column: span 2;">
+            <div class="card-header">
+                <div class="card-title">
+                    <span class="icon">&#128247;</span>
+                    Product Management
+                </div>
+            </div>
+            <div style="padding: 15px 0;">
+                <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
+                    <select id="vendorSelect" style="flex: 1; min-width: 200px; padding: 10px; background: #2a2a3e; color: white; border: 1px solid #3a3a4e; border-radius: 4px;">
+                        <option value="">Select a vendor...</option>
+                    </select>
+                    <button class="refresh-btn" onclick="loadVendorProducts()" style="padding: 10px 20px;">Load Products</button>
+                </div>
+                <div id="productManagementContent">
+                    <div style="color: #888; text-align: center; padding: 20px;">Select a vendor and click "Load Products" to view indexed images</div>
+                </div>
+            </div>
+            <div class="endpoint-url">/api/admin/products/by-vendor/{vendor}</div>
+        </div>
+
         <!-- Quick Actions -->
         <div class="card">
             <div class="card-header">
@@ -1591,6 +1613,89 @@ function getDashboardHTML() {
             }
         }
 
+        // Product Management Functions
+        async function loadVendorDropdown() {
+            const select = document.getElementById('vendorSelect');
+            const result = await fetchAPI('/api/db/vendors');
+            if (result.success && result.data.vendors) {
+                const vendors = result.data.vendors.sort((a, b) =>
+                    a.business_name.localeCompare(b.business_name)
+                );
+                select.innerHTML = '<option value="">Select a vendor...</option>';
+                for (const v of vendors) {
+                    select.innerHTML += '<option value="' + v.business_name + '">' + v.business_name + '</option>';
+                }
+            }
+        }
+
+        async function loadVendorProducts() {
+            const select = document.getElementById('vendorSelect');
+            const vendorName = select.value;
+            if (!vendorName) {
+                alert('Please select a vendor first');
+                return;
+            }
+
+            const container = document.getElementById('productManagementContent');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading products...</div>';
+
+            const encodedName = encodeURIComponent(vendorName);
+            const result = await fetchAPI('/api/admin/products/by-vendor/' + encodedName + '?limit=100');
+
+            if (result.success) {
+                const products = result.data.products || [];
+                if (products.length === 0) {
+                    container.innerHTML = '<div style="color: #888; text-align: center; padding: 20px;">No products found for this vendor</div>';
+                    return;
+                }
+
+                let html = '<div style="margin-bottom: 10px; color: #888;">Found ' + products.length + ' products. Click X to delete unwanted images.</div>';
+                html += '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px;">';
+
+                for (const p of products) {
+                    const imgUrl = p.image_url || '';
+                    const name = (p.name || 'Unknown').substring(0, 30);
+                    html += '<div class="product-thumb" id="product-' + p.id + '" style="position: relative; background: #2a2a3e; border-radius: 4px; overflow: hidden;">';
+                    html += '<button onclick="deleteProduct(\'' + p.id + '\')" style="position: absolute; top: 5px; right: 5px; background: #e74c3c; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; font-weight: bold; z-index: 10;">&times;</button>';
+                    if (imgUrl) {
+                        html += '<img src="' + imgUrl + '" style="width: 100%; height: 120px; object-fit: cover;" onerror="this.style.display=\'none\'">';
+                    } else {
+                        html += '<div style="width: 100%; height: 120px; background: #3a3a4e; display: flex; align-items: center; justify-content: center; color: #666;">No image</div>';
+                    }
+                    html += '<div style="padding: 8px; font-size: 11px; color: #ccc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">' + name + '</div>';
+                    html += '</div>';
+                }
+                html += '</div>';
+                container.innerHTML = html;
+            } else {
+                container.innerHTML = '<div class="error-message">' + result.error + '</div>';
+            }
+        }
+
+        async function deleteProduct(productId) {
+            if (!confirm('Delete this product from search index?')) return;
+
+            try {
+                const response = await fetch(API_BASE + '/api/admin/products/' + productId, {
+                    method: 'DELETE'
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    const el = document.getElementById('product-' + productId);
+                    if (el) {
+                        el.style.opacity = '0.3';
+                        el.style.pointerEvents = 'none';
+                        el.querySelector('button').style.display = 'none';
+                    }
+                } else {
+                    alert('Failed to delete: ' + (data.detail || 'Unknown error'));
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
         function refreshAll() {
             checkHealth();
             setTimeout(function() { checkStatus(); }, 300);
@@ -1610,6 +1715,7 @@ function getDashboardHTML() {
 
         window.onload = function() {
             refreshAll();
+            loadVendorDropdown();
         };
     </script>
 </body>
