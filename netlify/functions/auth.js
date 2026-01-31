@@ -774,6 +774,93 @@ function getDashboardHTML() {
             <div class="endpoint-url">/api/admin/errors</div>
         </div>
 
+        <!-- Banner Ads Management -->
+        <div class="card" style="grid-column: span 2;">
+            <div class="card-header">
+                <div class="card-title">
+                    <span class="icon">&#128444;</span>
+                    Banner Ads
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button class="refresh-btn" onclick="loadBanners()">Refresh</button>
+                    <button class="refresh-btn" style="border-color: #4caf50; color: #4caf50;" onclick="showAddBannerForm()">+ Add Banner</button>
+                </div>
+            </div>
+            <div id="bannerFormContainer" style="display: none; margin-bottom: 20px; padding: 20px; background: rgba(0,0,0,0.2); border-radius: 10px;">
+                <h3 style="color: #4fc3f7; margin-bottom: 15px;" id="bannerFormTitle">Add New Banner</h3>
+                <input type="hidden" id="editBannerId" value="">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div>
+                        <label style="display: block; color: #888; font-size: 12px; margin-bottom: 5px;">Name (internal)</label>
+                        <input type="text" id="bannerName" placeholder="e.g., Spring Sale - Vendor X" style="width: 100%; padding: 10px; background: #2a2a3e; color: white; border: 1px solid #3a3a4e; border-radius: 4px;">
+                    </div>
+                    <div>
+                        <label style="display: block; color: #888; font-size: 12px; margin-bottom: 5px;">Placement</label>
+                        <select id="bannerPlacement" style="width: 100%; padding: 10px; background: #2a2a3e; color: white; border: 1px solid #3a3a4e; border-radius: 4px;">
+                            <option value="homepage">Homepage</option>
+                            <option value="vendors">Vendors List</option>
+                            <option value="venues">Venues List</option>
+                            <option value="dining">Dining</option>
+                            <option value="lodging">Lodging</option>
+                            <option value="essentials">Essentials</option>
+                        </select>
+                    </div>
+                    <div style="grid-column: span 2;">
+                        <label style="display: block; color: #888; font-size: 12px; margin-bottom: 5px;">Image URL</label>
+                        <input type="text" id="bannerImageUrl" placeholder="https://..." style="width: 100%; padding: 10px; background: #2a2a3e; color: white; border: 1px solid #3a3a4e; border-radius: 4px;">
+                    </div>
+                    <div>
+                        <label style="display: block; color: #888; font-size: 12px; margin-bottom: 5px;">Image Width (px)</label>
+                        <input type="number" id="bannerWidth" value="1200" style="width: 100%; padding: 10px; background: #2a2a3e; color: white; border: 1px solid #3a3a4e; border-radius: 4px;">
+                    </div>
+                    <div>
+                        <label style="display: block; color: #888; font-size: 12px; margin-bottom: 5px;">Image Height (px)</label>
+                        <input type="number" id="bannerHeight" value="400" style="width: 100%; padding: 10px; background: #2a2a3e; color: white; border: 1px solid #3a3a4e; border-radius: 4px;">
+                    </div>
+                    <div>
+                        <label style="display: block; color: #888; font-size: 12px; margin-bottom: 5px;">Link Type</label>
+                        <select id="bannerLinkType" onchange="updateLinkFields()" style="width: 100%; padding: 10px; background: #2a2a3e; color: white; border: 1px solid #3a3a4e; border-radius: 4px;">
+                            <option value="vendor">Vendor Page</option>
+                            <option value="venue">Venue Page</option>
+                            <option value="external">External URL</option>
+                            <option value="screen">App Screen</option>
+                        </select>
+                    </div>
+                    <div id="linkUrlContainer">
+                        <label style="display: block; color: #888; font-size: 12px; margin-bottom: 5px;">Link URL / ID</label>
+                        <input type="text" id="bannerLinkUrl" placeholder="Vendor/Venue ID or URL" style="width: 100%; padding: 10px; background: #2a2a3e; color: white; border: 1px solid #3a3a4e; border-radius: 4px;">
+                    </div>
+                    <div>
+                        <label style="display: block; color: #888; font-size: 12px; margin-bottom: 5px;">Start Date (optional)</label>
+                        <input type="date" id="bannerStartDate" style="width: 100%; padding: 10px; background: #2a2a3e; color: white; border: 1px solid #3a3a4e; border-radius: 4px;">
+                    </div>
+                    <div>
+                        <label style="display: block; color: #888; font-size: 12px; margin-bottom: 5px;">End Date (optional)</label>
+                        <input type="date" id="bannerEndDate" style="width: 100%; padding: 10px; background: #2a2a3e; color: white; border: 1px solid #3a3a4e; border-radius: 4px;">
+                    </div>
+                    <div>
+                        <label style="display: block; color: #888; font-size: 12px; margin-bottom: 5px;">Position (lower = higher priority)</label>
+                        <input type="number" id="bannerPosition" value="0" min="0" style="width: 100%; padding: 10px; background: #2a2a3e; color: white; border: 1px solid #3a3a4e; border-radius: 4px;">
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <input type="checkbox" id="bannerActive" checked style="width: 20px; height: 20px;">
+                        <label for="bannerActive" style="color: #888;">Active</label>
+                    </div>
+                </div>
+                <div style="margin-top: 20px; display: flex; gap: 10px;">
+                    <button class="refresh-btn" style="border-color: #4caf50; color: #4caf50; padding: 10px 25px;" onclick="saveBanner()">Save Banner</button>
+                    <button class="refresh-btn" style="padding: 10px 25px;" onclick="cancelBannerForm()">Cancel</button>
+                </div>
+            </div>
+            <div id="bannersContent">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Loading...
+                </div>
+            </div>
+            <div class="endpoint-url">GET /api/db/banners</div>
+        </div>
+
         <!-- Product Management -->
         <div class="card" style="grid-column: span 2;">
             <div class="card-header">
@@ -1734,6 +1821,224 @@ function getDashboardHTML() {
             }
         }
 
+        // Banner Ads Management Functions
+        async function loadBanners() {
+            const container = document.getElementById('bannersContent');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading banners...</div>';
+
+            const result = await fetchAPI('/api/db/banners');
+
+            if (result.success) {
+                const banners = result.data.banners || [];
+                if (banners.length === 0) {
+                    container.innerHTML = '<div style="color: #888; text-align: center; padding: 20px;">No banners yet. Click "Add Banner" to create one.</div>';
+                    return;
+                }
+
+                let html = '<div style="display: grid; gap: 15px;">';
+                for (const b of banners) {
+                    const isActive = b.is_active;
+                    const statusColor = isActive ? '#4caf50' : '#888';
+                    const statusText = isActive ? 'Active' : 'Inactive';
+                    const imgPreview = b.image_url ? '<img src="' + b.image_url + '" style="width: 120px; height: 40px; object-fit: cover; border-radius: 4px;" onerror="this.style.display=&apos;none&apos;">' : '<div style="width: 120px; height: 40px; background: #3a3a4e; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #666; font-size: 10px;">No image</div>';
+
+                    html += '<div class="service-item" style="flex-wrap: wrap; gap: 10px;">';
+                    html += imgPreview;
+                    html += '<div style="flex: 1; min-width: 150px;">';
+                    html += '<div style="font-weight: 600;">' + (b.name || 'Untitled') + '</div>';
+                    html += '<div style="color: #888; font-size: 12px;">' + b.placement + ' &bull; Position: ' + b.position + '</div>';
+                    html += '<div style="color: #666; font-size: 11px;">' + (b.start_date || 'No start') + ' - ' + (b.end_date || 'No end') + '</div>';
+                    html += '</div>';
+                    html += '<div style="display: flex; gap: 8px; align-items: center;">';
+                    html += '<span style="color: ' + statusColor + '; font-size: 12px; font-weight: 600;">' + statusText + '</span>';
+                    html += '<span style="color: #4fc3f7; font-size: 11px;">' + (b.impression_count || 0) + ' views</span>';
+                    html += '<span style="color: #ffc107; font-size: 11px;">' + (b.click_count || 0) + ' clicks</span>';
+                    html += '<button class="refresh-btn" style="padding: 5px 10px; font-size: 11px;" onclick="editBanner(&apos;' + b.id + '&apos;)">Edit</button>';
+                    html += '<button class="refresh-btn" style="padding: 5px 10px; font-size: 11px; border-color: ' + (isActive ? '#888' : '#4caf50') + '; color: ' + (isActive ? '#888' : '#4caf50') + ';" onclick="toggleBanner(&apos;' + b.id + '&apos;, ' + !isActive + ')">' + (isActive ? 'Pause' : 'Activate') + '</button>';
+                    html += '<button class="refresh-btn" style="padding: 5px 10px; font-size: 11px; border-color: #f44336; color: #f44336;" onclick="deleteBanner(&apos;' + b.id + '&apos;)">Delete</button>';
+                    html += '</div>';
+                    html += '</div>';
+                }
+                html += '</div>';
+                container.innerHTML = html;
+                showRawResponse(result.data, '/api/db/banners');
+            } else {
+                container.innerHTML = '<div class="error-message">' + result.error + '</div>';
+            }
+        }
+
+        function showAddBannerForm() {
+            document.getElementById('bannerFormContainer').style.display = 'block';
+            document.getElementById('bannerFormTitle').textContent = 'Add New Banner';
+            document.getElementById('editBannerId').value = '';
+            document.getElementById('bannerName').value = '';
+            document.getElementById('bannerPlacement').value = 'homepage';
+            document.getElementById('bannerImageUrl').value = '';
+            document.getElementById('bannerWidth').value = '1200';
+            document.getElementById('bannerHeight').value = '400';
+            document.getElementById('bannerLinkType').value = 'vendor';
+            document.getElementById('bannerLinkUrl').value = '';
+            document.getElementById('bannerStartDate').value = '';
+            document.getElementById('bannerEndDate').value = '';
+            document.getElementById('bannerPosition').value = '0';
+            document.getElementById('bannerActive').checked = true;
+        }
+
+        function cancelBannerForm() {
+            document.getElementById('bannerFormContainer').style.display = 'none';
+        }
+
+        function updateLinkFields() {
+            const linkType = document.getElementById('bannerLinkType').value;
+            const label = document.querySelector('#linkUrlContainer label');
+            const input = document.getElementById('bannerLinkUrl');
+
+            if (linkType === 'vendor') {
+                label.textContent = 'Vendor ID (UUID)';
+                input.placeholder = 'Paste vendor UUID from database';
+            } else if (linkType === 'venue') {
+                label.textContent = 'Venue ID (UUID)';
+                input.placeholder = 'Paste venue UUID from database';
+            } else if (linkType === 'external') {
+                label.textContent = 'External URL';
+                input.placeholder = 'https://example.com';
+            } else {
+                label.textContent = 'App Screen Path';
+                input.placeholder = '/vendors or /dining etc.';
+            }
+        }
+
+        async function saveBanner() {
+            const editId = document.getElementById('editBannerId').value;
+            const name = document.getElementById('bannerName').value.trim();
+            const placement = document.getElementById('bannerPlacement').value;
+            const imageUrl = document.getElementById('bannerImageUrl').value.trim();
+            const width = parseInt(document.getElementById('bannerWidth').value) || 1200;
+            const height = parseInt(document.getElementById('bannerHeight').value) || 400;
+            const linkType = document.getElementById('bannerLinkType').value;
+            const linkUrl = document.getElementById('bannerLinkUrl').value.trim();
+            const startDate = document.getElementById('bannerStartDate').value || null;
+            const endDate = document.getElementById('bannerEndDate').value || null;
+            const position = parseInt(document.getElementById('bannerPosition').value) || 0;
+            const isActive = document.getElementById('bannerActive').checked;
+
+            if (!name || !imageUrl) {
+                alert('Please fill in name and image URL');
+                return;
+            }
+
+            const bannerData = {
+                name: name,
+                placement: placement,
+                image_url: imageUrl,
+                image_width: width,
+                image_height: height,
+                link_type: linkType,
+                position: position,
+                is_active: isActive
+            };
+
+            if (startDate) bannerData.start_date = startDate;
+            if (endDate) bannerData.end_date = endDate;
+
+            if (linkType === 'vendor' && linkUrl) {
+                bannerData.link_vendor_id = linkUrl;
+            } else if (linkType === 'venue' && linkUrl) {
+                bannerData.link_venue_id = linkUrl;
+            } else if (linkUrl) {
+                bannerData.link_url = linkUrl;
+            }
+
+            try {
+                let response;
+                if (editId) {
+                    response = await fetch(API_BASE + '/api/db/banners/' + editId, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(bannerData)
+                    });
+                } else {
+                    response = await fetch(API_BASE + '/api/db/banners', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(bannerData)
+                    });
+                }
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    cancelBannerForm();
+                    loadBanners();
+                } else {
+                    alert('Failed to save: ' + (data.detail || 'Unknown error'));
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        async function editBanner(bannerId) {
+            const result = await fetchAPI('/api/db/banners/' + bannerId);
+
+            if (result.success) {
+                const b = result.data;
+                document.getElementById('bannerFormContainer').style.display = 'block';
+                document.getElementById('bannerFormTitle').textContent = 'Edit Banner';
+                document.getElementById('editBannerId').value = bannerId;
+                document.getElementById('bannerName').value = b.name || '';
+                document.getElementById('bannerPlacement').value = b.placement || 'homepage';
+                document.getElementById('bannerImageUrl').value = b.image_url || '';
+                document.getElementById('bannerWidth').value = b.image_width || 1200;
+                document.getElementById('bannerHeight').value = b.image_height || 400;
+                document.getElementById('bannerLinkType').value = b.link_type || 'vendor';
+                document.getElementById('bannerLinkUrl').value = b.link_url || b.link_vendor_id || b.link_venue_id || '';
+                document.getElementById('bannerStartDate').value = b.start_date || '';
+                document.getElementById('bannerEndDate').value = b.end_date || '';
+                document.getElementById('bannerPosition').value = b.position || 0;
+                document.getElementById('bannerActive').checked = b.is_active !== false;
+                updateLinkFields();
+            } else {
+                alert('Failed to load banner: ' + result.error);
+            }
+        }
+
+        async function toggleBanner(bannerId, newStatus) {
+            try {
+                const response = await fetch(API_BASE + '/api/db/banners/' + bannerId, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ is_active: newStatus })
+                });
+
+                if (response.ok) {
+                    loadBanners();
+                } else {
+                    alert('Failed to update banner status');
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        async function deleteBanner(bannerId) {
+            if (!confirm('Delete this banner? This cannot be undone.')) return;
+
+            try {
+                const response = await fetch(API_BASE + '/api/db/banners/' + bannerId, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    loadBanners();
+                } else {
+                    alert('Failed to delete banner');
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
         function refreshAll() {
             checkHealth();
             setTimeout(function() { checkStatus(); }, 300);
@@ -1749,6 +2054,7 @@ function getDashboardHTML() {
             setTimeout(function() { checkRecentActivity(); }, 3300);
             setTimeout(function() { checkTopFavorited(); }, 3600);
             setTimeout(function() { checkErrorLog(); }, 3900);
+            setTimeout(function() { loadBanners(); }, 4200);
         }
 
         window.onload = function() {
