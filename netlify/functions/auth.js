@@ -738,6 +738,78 @@ function getDashboardHTML() {
             <div class="endpoint-url">Sorted by favorite_count</div>
         </div>
 
+        <!-- Cron Jobs Status -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <span class="icon">&#128338;</span>
+                    Cron Jobs
+                </div>
+                <button class="refresh-btn" onclick="checkCronStatus()">Refresh</button>
+            </div>
+            <div id="cronStatusContent">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Loading...
+                </div>
+            </div>
+            <div class="endpoint-url">GET /api/cron/status</div>
+        </div>
+
+        <!-- Business Updates -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <span class="icon">&#128227;</span>
+                    Business Updates
+                </div>
+                <button class="refresh-btn" onclick="checkBusinessUpdates()">Refresh</button>
+            </div>
+            <div id="businessUpdatesContent">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Loading...
+                </div>
+            </div>
+            <div class="endpoint-url">GET /api/db/business-updates</div>
+        </div>
+
+        <!-- Trending Now -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <span class="icon">&#128293;</span>
+                    Trending Now
+                </div>
+                <button class="refresh-btn" onclick="checkTrending()">Refresh</button>
+            </div>
+            <div id="trendingContent">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Loading...
+                </div>
+            </div>
+            <div class="endpoint-url">GET /api/db/trending</div>
+        </div>
+
+        <!-- Email System -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <span class="icon">&#128231;</span>
+                    Email System
+                </div>
+                <button class="refresh-btn" onclick="checkEmailSystem()">Refresh</button>
+            </div>
+            <div id="emailSystemContent">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Loading...
+                </div>
+            </div>
+            <div class="endpoint-url">Email job status from cron</div>
+        </div>
+
         <!-- Quick Site Links -->
         <div class="card">
             <div class="card-header">
@@ -2039,6 +2111,263 @@ function getDashboardHTML() {
             }
         }
 
+        // Cron Jobs Status
+        async function checkCronStatus() {
+            const container = document.getElementById('cronStatusContent');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
+
+            const result = await fetchAPI('/api/cron/status');
+
+            if (result.success) {
+                const data = result.data;
+                const isConfigured = data.configured;
+                const isShowMonth = data.is_show_month;
+                const currentMonth = data.current_month;
+                const showMonths = data.show_months || [1, 3, 10];
+                const monthNames = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+                container.innerHTML =
+                    '<div class="stats-row" style="margin-bottom: 15px;">' +
+                        '<div class="stat-box">' +
+                            '<div class="stat-number" style="color: ' + (isConfigured ? '#4caf50' : '#f44336') + ';">' + (isConfigured ? 'YES' : 'NO') + '</div>' +
+                            '<div class="stat-label">Configured</div>' +
+                        '</div>' +
+                        '<div class="stat-box">' +
+                            '<div class="stat-number" style="color: ' + (isShowMonth ? '#4caf50' : '#888') + ';">' + (isShowMonth ? 'YES' : 'NO') + '</div>' +
+                            '<div class="stat-label">Show Month</div>' +
+                        '</div>' +
+                        '<div class="stat-box">' +
+                            '<div class="stat-number">' + monthNames[currentMonth] + '</div>' +
+                            '<div class="stat-label">Current</div>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="service-list">' +
+                        '<div class="service-item"><span class="service-name">Weekly Analytics</span><span style="color: #4fc3f7; font-size: 0.75rem;">Mondays 9am CT</span></div>' +
+                        '<div class="service-item"><span class="service-name">Favorites Digest</span><span style="color: #4fc3f7; font-size: 0.75rem;">' + (isShowMonth ? 'Weekly' : 'Monthly') + '</span></div>' +
+                        '<div class="service-item"><span class="service-name">Profile Nudges</span><span style="color: #4fc3f7; font-size: 0.75rem;">Daily 10am CT</span></div>' +
+                        '<div class="service-item"><span class="service-name">Subscription Reminders</span><span style="color: #4fc3f7; font-size: 0.75rem;">Daily 10am CT</span></div>' +
+                    '</div>' +
+                    '<div style="margin-top: 15px; display: flex; gap: 8px; flex-wrap: wrap;">' +
+                        '<button class="refresh-btn" style="font-size: 0.75rem;" onclick="triggerCronJob(\\'favorites-digest\\')">Run Digest</button>' +
+                        '<button class="refresh-btn" style="font-size: 0.75rem;" onclick="triggerCronJob(\\'weekly-analytics\\')">Run Analytics</button>' +
+                        '<button class="refresh-btn" style="font-size: 0.75rem;" onclick="triggerCronJob(\\'all-daily\\')">Run Daily</button>' +
+                    '</div>';
+                showRawResponse(result.data, '/api/cron/status');
+            } else {
+                container.innerHTML = '<div class="error-message">' + result.error + '</div>';
+            }
+            updateLastUpdated();
+        }
+
+        async function triggerCronJob(jobName) {
+            const container = document.getElementById('cronStatusContent');
+            const originalContent = container.innerHTML;
+            container.innerHTML = '<div class="loading"><div class="spinner"></div>Triggering ' + jobName + '...</div>';
+
+            try {
+                const response = await fetch(API_BASE + '/api/cron/' + jobName, {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + (prompt('Enter CRON_SECRET:') || '') }
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    alert('Job completed!\\n\\nResults: ' + JSON.stringify(data.results, null, 2));
+                    showRawResponse(data, '/api/cron/' + jobName);
+                } else {
+                    alert('Job failed: ' + (data.detail || 'Unknown error'));
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+
+            container.innerHTML = originalContent;
+        }
+
+        // Business Updates
+        async function checkBusinessUpdates() {
+            const container = document.getElementById('businessUpdatesContent');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
+
+            const result = await fetchAPI('/api/db/business-updates?limit=10');
+
+            if (result.success) {
+                const updates = result.data.updates || [];
+                const total = result.data.total || updates.length;
+
+                if (updates.length === 0) {
+                    container.innerHTML = '<div style="color: #888; text-align: center; padding: 20px;">No business updates yet</div>';
+                } else {
+                    // Count by category
+                    const categoryCounts = {};
+                    updates.forEach(u => {
+                        const cat = u.category || 'other';
+                        categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+                    });
+
+                    let html = '<div class="stats-row" style="margin-bottom: 15px;">' +
+                        '<div class="stat-box">' +
+                            '<div class="stat-number">' + total + '</div>' +
+                            '<div class="stat-label">Total Updates</div>' +
+                        '</div>' +
+                    '</div>';
+
+                    html += '<div class="service-list">';
+                    for (const update of updates.slice(0, 6)) {
+                        const categoryColors = {
+                            'announcement': '#4fc3f7',
+                            'event': '#ce93d8',
+                            'sale': '#4caf50',
+                            'new_arrival': '#ffc107',
+                            'hours_update': '#ff9800'
+                        };
+                        const catColor = categoryColors[update.category] || '#888';
+                        const businessName = update.vendor?.business_name || update.venue?.name || 'Unknown';
+                        const date = update.created_at ? update.created_at.slice(0, 10) : '';
+
+                        html += '<div class="service-item" style="flex-direction: column; align-items: flex-start;">' +
+                            '<div style="display: flex; width: 100%; justify-content: space-between; margin-bottom: 4px;">' +
+                                '<span style="font-weight: 600; font-size: 0.85rem;">' + (update.title || 'Untitled').substring(0, 40) + '</span>' +
+                                '<span style="color: ' + catColor + '; font-size: 0.7rem; text-transform: uppercase;">' + (update.category || 'other') + '</span>' +
+                            '</div>' +
+                            '<div style="color: #888; font-size: 0.75rem;">' + businessName + ' &bull; ' + date + '</div>' +
+                        '</div>';
+                    }
+                    html += '</div>';
+
+                    container.innerHTML = html;
+                }
+                showRawResponse(result.data, '/api/db/business-updates');
+            } else {
+                container.innerHTML = '<div class="error-message">' + result.error + '</div>';
+            }
+            updateLastUpdated();
+        }
+
+        // Trending Now
+        async function checkTrending() {
+            const container = document.getElementById('trendingContent');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
+
+            const result = await fetchAPI('/api/db/trending?days=7');
+
+            if (result.success) {
+                const data = result.data;
+                const vendors = data.vendors || [];
+                const categories = data.categories || [];
+                const searches = data.searches || [];
+
+                let html = '<div style="margin-bottom: 10px; color: #888; font-size: 0.75rem;">Last 7 days</div>';
+
+                // Top Vendors
+                if (vendors.length > 0) {
+                    html += '<div style="margin-bottom: 10px;"><div style="color: #4fc3f7; font-size: 0.8rem; margin-bottom: 5px;">Top Vendors</div>';
+                    html += '<div class="service-list">';
+                    for (const v of vendors.slice(0, 3)) {
+                        html += '<div class="service-item">' +
+                            '<span class="service-name" style="font-size: 0.85rem;">' + (v.business_name || v.name || 'Unknown') + '</span>' +
+                            '<span style="color: #4caf50; font-weight: 600;">' + (v.view_count || v.views || 0) + ' views</span>' +
+                        '</div>';
+                    }
+                    html += '</div></div>';
+                }
+
+                // Top Categories
+                if (categories.length > 0) {
+                    html += '<div style="margin-bottom: 10px;"><div style="color: #ce93d8; font-size: 0.8rem; margin-bottom: 5px;">Hot Categories</div>';
+                    html += '<div class="service-list">';
+                    for (const c of categories.slice(0, 3)) {
+                        html += '<div class="service-item">' +
+                            '<span class="service-name" style="font-size: 0.85rem;">' + (c.category || c.name || 'Unknown') + '</span>' +
+                            '<span style="color: #ffc107; font-weight: 600;">' + (c.view_count || c.views || 0) + '</span>' +
+                        '</div>';
+                    }
+                    html += '</div></div>';
+                }
+
+                // Top Searches
+                if (searches.length > 0) {
+                    html += '<div><div style="color: #ff9800; font-size: 0.8rem; margin-bottom: 5px;">Top Searches</div>';
+                    html += '<div class="service-list">';
+                    for (const s of searches.slice(0, 3)) {
+                        html += '<div class="service-item">' +
+                            '<span class="service-name" style="font-size: 0.85rem;">' + (s.query || s.search_term || 'Unknown') + '</span>' +
+                            '<span style="color: #4fc3f7; font-weight: 600;">' + (s.count || s.search_count || 0) + '</span>' +
+                        '</div>';
+                    }
+                    html += '</div></div>';
+                }
+
+                if (vendors.length === 0 && categories.length === 0 && searches.length === 0) {
+                    html = '<div style="color: #888; text-align: center; padding: 20px;">No trending data yet</div>';
+                }
+
+                container.innerHTML = html;
+                showRawResponse(result.data, '/api/db/trending');
+            } else {
+                container.innerHTML = '<div class="error-message">' + result.error + '</div>';
+            }
+            updateLastUpdated();
+        }
+
+        // Email System Status
+        async function checkEmailSystem() {
+            const container = document.getElementById('emailSystemContent');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
+
+            // Get cron status to check if email system is configured
+            const result = await fetchAPI('/api/cron/status');
+
+            if (result.success) {
+                const data = result.data;
+                const isConfigured = data.configured;
+                const isShowMonth = data.is_show_month;
+
+                // Email types and their schedules
+                const emailJobs = [
+                    { name: 'Welcome Email', trigger: 'On signup', status: 'active' },
+                    { name: 'Favorites Digest', trigger: isShowMonth ? 'Weekly (show month)' : 'Monthly', status: isConfigured ? 'scheduled' : 'not configured' },
+                    { name: 'Weekly Analytics', trigger: 'Mondays', status: isConfigured ? 'scheduled' : 'not configured' },
+                    { name: 'Profile Nudges', trigger: '3 days after signup', status: isConfigured ? 'scheduled' : 'not configured' },
+                    { name: 'Subscription Reminders', trigger: '7 days before renewal', status: isConfigured ? 'scheduled' : 'not configured' },
+                    { name: 'Contact Vendor', trigger: 'On form submit', status: 'active' },
+                    { name: 'New Favorite', trigger: 'When favorited', status: 'active' }
+                ];
+
+                let html = '<div class="stats-row" style="margin-bottom: 15px;">' +
+                    '<div class="stat-box">' +
+                        '<div class="stat-number">' + emailJobs.length + '</div>' +
+                        '<div class="stat-label">Email Types</div>' +
+                    '</div>' +
+                    '<div class="stat-box">' +
+                        '<div class="stat-number" style="color: ' + (isConfigured ? '#4caf50' : '#f44336') + ';">' + (isConfigured ? 'ON' : 'OFF') + '</div>' +
+                        '<div class="stat-label">Cron Active</div>' +
+                    '</div>' +
+                '</div>';
+
+                html += '<div class="service-list">';
+                for (const job of emailJobs) {
+                    const statusColor = job.status === 'active' ? '#4caf50' : (job.status === 'scheduled' ? '#4fc3f7' : '#888');
+                    html += '<div class="service-item">' +
+                        '<div style="flex: 1;">' +
+                            '<div style="font-weight: 500; font-size: 0.85rem;">' + job.name + '</div>' +
+                            '<div style="color: #666; font-size: 0.7rem;">' + job.trigger + '</div>' +
+                        '</div>' +
+                        '<span style="color: ' + statusColor + '; font-size: 0.7rem; text-transform: uppercase;">' + job.status + '</span>' +
+                    '</div>';
+                }
+                html += '</div>';
+
+                html += '<div style="margin-top: 10px;"><a href="https://resend.com/emails" target="_blank" class="external-link" style="font-size: 0.8rem;">View in Resend Dashboard &rarr;</a></div>';
+
+                container.innerHTML = html;
+                showRawResponse({ email_jobs: emailJobs, cron_configured: isConfigured }, 'Email System Status');
+            } else {
+                container.innerHTML = '<div class="error-message">' + result.error + '</div>';
+            }
+            updateLastUpdated();
+        }
+
         function refreshAll() {
             checkHealth();
             setTimeout(function() { checkStatus(); }, 300);
@@ -2053,8 +2382,12 @@ function getDashboardHTML() {
             setTimeout(function() { checkNewsletterStats(); }, 3000);
             setTimeout(function() { checkRecentActivity(); }, 3300);
             setTimeout(function() { checkTopFavorited(); }, 3600);
-            setTimeout(function() { checkErrorLog(); }, 3900);
-            setTimeout(function() { loadBanners(); }, 4200);
+            setTimeout(function() { checkCronStatus(); }, 3900);
+            setTimeout(function() { checkBusinessUpdates(); }, 4200);
+            setTimeout(function() { checkTrending(); }, 4500);
+            setTimeout(function() { checkEmailSystem(); }, 4800);
+            setTimeout(function() { checkErrorLog(); }, 5100);
+            setTimeout(function() { loadBanners(); }, 5400);
         }
 
         window.onload = function() {
