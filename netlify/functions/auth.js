@@ -933,6 +933,42 @@ function getDashboardHTML() {
             <div class="endpoint-url">GET /api/db/banners</div>
         </div>
 
+        <!-- Ad Marketplace Management -->
+        <div class="card" style="grid-column: span 2;">
+            <div class="card-header">
+                <div class="card-title">
+                    <span class="icon">&#128227;</span>
+                    Ad Marketplace
+                </div>
+                <button class="refresh-btn" onclick="checkAdMarketplace()">Refresh</button>
+            </div>
+            <div id="adMarketplaceContent">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Loading...
+                </div>
+            </div>
+            <div class="endpoint-url">GET /api/ads/placements</div>
+        </div>
+
+        <!-- Ad Waitlist Management -->
+        <div class="card" style="grid-column: span 2;">
+            <div class="card-header">
+                <div class="card-title">
+                    <span class="icon">&#128276;</span>
+                    Ad Waitlist
+                </div>
+                <button class="refresh-btn" onclick="checkAdWaitlist()">Refresh</button>
+            </div>
+            <div id="adWaitlistContent">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Loading...
+                </div>
+            </div>
+            <div class="endpoint-url">Waitlist management across all placements</div>
+        </div>
+
         <!-- Product Management -->
         <div class="card" style="grid-column: span 2;">
             <div class="card-header">
@@ -2388,6 +2424,179 @@ function getDashboardHTML() {
             setTimeout(function() { checkEmailSystem(); }, 4800);
             setTimeout(function() { checkErrorLog(); }, 5100);
             setTimeout(function() { loadBanners(); }, 5400);
+            setTimeout(function() { checkAdMarketplace(); }, 5700);
+            setTimeout(function() { checkAdWaitlist(); }, 6000);
+        }
+
+        // Ad Marketplace Management
+        async function checkAdMarketplace() {
+            const container = document.getElementById('adMarketplaceContent');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
+
+            const result = await fetchAPI('/api/ads/placements');
+
+            if (result.success) {
+                const placements = result.data.placements || [];
+                if (placements.length === 0) {
+                    container.innerHTML = '<div style="color: #888; text-align: center; padding: 20px;">No ad placements configured.</div>';
+                    return;
+                }
+
+                // Separate premium and standard
+                const premium = placements.filter(p => p.tier === 'premium');
+                const standard = placements.filter(p => p.tier === 'standard');
+
+                let html = '<div style="display: grid; grid-template-columns: 1fr; gap: 20px;">';
+
+                // Premium Section
+                html += '<div>';
+                html += '<h4 style="color: #ffc107; margin-bottom: 12px;">&#128081; Premium Placements</h4>';
+                html += '<table style="width: 100%; border-collapse: collapse; font-size: 0.9em;">';
+                html += '<tr style="border-bottom: 1px solid #3a3a4e;">';
+                html += '<th style="text-align: left; padding: 8px; color: #888;">Placement</th>';
+                html += '<th style="text-align: center; padding: 8px; color: #888;">Slots</th>';
+                html += '<th style="text-align: center; padding: 8px; color: #888;">Used</th>';
+                html += '<th style="text-align: center; padding: 8px; color: #888;">Available</th>';
+                html += '<th style="text-align: right; padding: 8px; color: #888;">Price/mo</th>';
+                html += '</tr>';
+
+                premium.forEach(p => {
+                    const available = p.spots_remaining !== null ? p.spots_remaining : '∞';
+                    const statusColor = p.available ? '#4caf50' : '#f44336';
+                    html += '<tr style="border-bottom: 1px solid #2a2a3e;">';
+                    html += '<td style="padding: 8px;">' + p.display_name + '</td>';
+                    html += '<td style="padding: 8px; text-align: center;">' + (p.total_slots || '∞') + '</td>';
+                    html += '<td style="padding: 8px; text-align: center;">' + (p.current_ads || 0) + '</td>';
+                    html += '<td style="padding: 8px; text-align: center; color: ' + statusColor + ';">' + available + '</td>';
+                    html += '<td style="padding: 8px; text-align: right;">$' + (p.monthly_rate_cents / 100) + '</td>';
+                    html += '</tr>';
+                });
+                html += '</table></div>';
+
+                // Standard Section
+                html += '<div>';
+                html += '<h4 style="color: #4caf50; margin-bottom: 12px;">&#128260; Standard Placements (Rotation)</h4>';
+                html += '<table style="width: 100%; border-collapse: collapse; font-size: 0.9em;">';
+                html += '<tr style="border-bottom: 1px solid #3a3a4e;">';
+                html += '<th style="text-align: left; padding: 8px; color: #888;">Placement</th>';
+                html += '<th style="text-align: center; padding: 8px; color: #888;">Active Ads</th>';
+                html += '<th style="text-align: center; padding: 8px; color: #888;">Max Per Category</th>';
+                html += '<th style="text-align: right; padding: 8px; color: #888;">Price/mo</th>';
+                html += '</tr>';
+
+                standard.forEach(p => {
+                    html += '<tr style="border-bottom: 1px solid #2a2a3e;">';
+                    html += '<td style="padding: 8px;">' + p.display_name + '</td>';
+                    html += '<td style="padding: 8px; text-align: center;">' + (p.current_ads || 0) + '</td>';
+                    html += '<td style="padding: 8px; text-align: center;">' + (p.max_same_category || 2) + '</td>';
+                    html += '<td style="padding: 8px; text-align: right;">$' + (p.monthly_rate_cents / 100) + '</td>';
+                    html += '</tr>';
+                });
+                html += '</table></div>';
+
+                html += '</div>';
+
+                // Summary stats
+                const totalPremiumSlots = premium.reduce((sum, p) => sum + (p.total_slots || 0), 0);
+                const usedPremiumSlots = premium.reduce((sum, p) => sum + (p.current_ads || 0), 0);
+                const totalStandardAds = standard.reduce((sum, p) => sum + (p.current_ads || 0), 0);
+
+                html += '<div style="margin-top: 20px; padding: 15px; background: rgba(79, 195, 247, 0.1); border-radius: 8px; display: flex; gap: 30px; flex-wrap: wrap;">';
+                html += '<div><span style="color: #888;">Premium Slots:</span> <strong>' + usedPremiumSlots + '/' + totalPremiumSlots + '</strong></div>';
+                html += '<div><span style="color: #888;">Standard Ads Active:</span> <strong>' + totalStandardAds + '</strong></div>';
+                html += '</div>';
+
+                container.innerHTML = html;
+            } else {
+                container.innerHTML = '<div style="color: #f44336; padding: 20px;">Error loading ad placements: ' + (result.error || 'Unknown error') + '</div>';
+            }
+        }
+
+        // Ad Waitlist Management
+        async function checkAdWaitlist() {
+            const container = document.getElementById('adWaitlistContent');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
+
+            // Get all waitlist entries
+            const result = await fetchAPI('/api/ads/waitlist/all');
+
+            if (result.success) {
+                const entries = result.data.entries || [];
+
+                if (entries.length === 0) {
+                    container.innerHTML = '<div style="color: #888; text-align: center; padding: 20px;">No vendors on waitlists.</div>';
+                    return;
+                }
+
+                // Group by placement
+                const byPlacement = {};
+                entries.forEach(e => {
+                    if (!byPlacement[e.placement]) {
+                        byPlacement[e.placement] = [];
+                    }
+                    byPlacement[e.placement].push(e);
+                });
+
+                let html = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px;">';
+
+                Object.keys(byPlacement).forEach(placement => {
+                    const list = byPlacement[placement].sort((a, b) => a.position - b.position);
+                    html += '<div style="background: rgba(0,0,0,0.2); border-radius: 8px; padding: 15px;">';
+                    html += '<h4 style="color: #4fc3f7; margin-bottom: 12px;">' + (list[0].ad_placement_config?.display_name || placement) + '</h4>';
+                    html += '<div style="display: flex; flex-direction: column; gap: 8px;">';
+
+                    list.forEach(entry => {
+                        const statusColor = entry.status === 'notified' ? '#ffc107' : '#4caf50';
+                        const statusText = entry.status === 'notified' ? 'NOTIFIED' : '#' + entry.position;
+                        html += '<div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; background: rgba(255,255,255,0.05); border-radius: 4px;">';
+                        html += '<div>';
+                        html += '<div style="font-weight: 500;">' + (entry.business_name || 'Unknown Vendor') + '</div>';
+                        html += '<div style="font-size: 0.8em; color: #888;">' + entry.email + '</div>';
+                        html += '</div>';
+                        html += '<div style="display: flex; align-items: center; gap: 10px;">';
+                        html += '<span style="color: ' + statusColor + '; font-weight: 600;">' + statusText + '</span>';
+                        if (entry.status === 'waiting') {
+                            html += '<button onclick="notifyWaitlistEntry(\\'' + entry.id + '\\', \\'' + placement + '\\')" style="padding: 4px 10px; background: #2196f3; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8em;">Notify</button>';
+                        }
+                        html += '</div>';
+                        html += '</div>';
+                    });
+
+                    html += '</div></div>';
+                });
+
+                html += '</div>';
+                container.innerHTML = html;
+            } else {
+                // API might not exist yet, show placeholder
+                container.innerHTML = '<div style="color: #888; text-align: center; padding: 20px;">Waitlist API not available. Run the database migration first.</div>';
+            }
+        }
+
+        async function notifyWaitlistEntry(entryId, placement) {
+            if (!confirm('Notify this vendor that a slot is available?')) return;
+
+            const container = document.getElementById('adWaitlistContent');
+            const originalContent = container.innerHTML;
+            container.innerHTML = '<div class="loading"><div class="spinner"></div>Sending notification...</div>';
+
+            try {
+                const response = await fetch(API_BASE + '/api/ads/waitlist/' + placement + '/notify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ entry_id: entryId })
+                });
+
+                if (response.ok) {
+                    await checkAdWaitlist(); // Refresh
+                } else {
+                    container.innerHTML = originalContent;
+                    alert('Failed to send notification');
+                }
+            } catch (error) {
+                container.innerHTML = originalContent;
+                alert('Error: ' + error.message);
+            }
         }
 
         window.onload = function() {
