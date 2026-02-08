@@ -828,7 +828,79 @@ function getDashboardHTML() {
             </div>
         </div>
 
-        <!-- Error Monitor -->
+        <!-- User Growth -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <span class="icon">&#128101;</span>
+                    User Growth
+                </div>
+                <button class="refresh-btn" onclick="checkUserGrowth()">Refresh</button>
+            </div>
+            <div id="userGrowthContent">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Loading...
+                </div>
+            </div>
+            <div class="endpoint-url">GET /api/db/admin/user-growth</div>
+        </div>
+
+        <!-- Ad Performance -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <span class="icon">&#128202;</span>
+                    Ad Performance
+                </div>
+                <button class="refresh-btn" onclick="checkAdPerformance()">Refresh</button>
+            </div>
+            <div id="adPerformanceContent">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Loading...
+                </div>
+            </div>
+            <div class="endpoint-url">GET /api/db/admin/ad-analytics</div>
+        </div>
+
+        <!-- Push Notification Health -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <span class="icon">&#128276;</span>
+                    Push Notifications
+                </div>
+                <button class="refresh-btn" onclick="checkPushHealth()">Refresh</button>
+            </div>
+            <div id="pushHealthContent">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Loading...
+                </div>
+            </div>
+            <div class="endpoint-url">GET /api/db/admin/push/token-count</div>
+        </div>
+
+        <!-- Scraper Health -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <span class="icon">&#128375;</span>
+                    Scraper Health
+                </div>
+                <button class="refresh-btn" onclick="checkScraperHealth()">Refresh</button>
+            </div>
+            <div id="scraperHealthContent">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Loading...
+                </div>
+            </div>
+            <div class="endpoint-url">GET /api/scrape/stats</div>
+        </div>
+
+        <!-- Error Rate -->
         <div class="card">
             <div class="card-header">
                 <div class="card-title">
@@ -843,7 +915,25 @@ function getDashboardHTML() {
                     Loading...
                 </div>
             </div>
-            <div class="endpoint-url">/api/admin/errors</div>
+            <div class="endpoint-url">GET /api/admin/errors</div>
+        </div>
+
+        <!-- Email Delivery -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <span class="icon">&#128233;</span>
+                    Email Delivery
+                </div>
+                <button class="refresh-btn" onclick="checkEmailDelivery()">Refresh</button>
+            </div>
+            <div id="emailDeliveryContent">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Loading...
+                </div>
+            </div>
+            <div class="endpoint-url">GET /api/db/admin/newsletter/subscribers</div>
         </div>
 
         <!-- Banner Ads Management -->
@@ -1809,6 +1899,201 @@ function getDashboardHTML() {
             }
         }
 
+        // === New Monitoring Card Functions ===
+
+        async function checkUserGrowth() {
+            const container = document.getElementById('userGrowthContent');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
+
+            const result = await fetchAPI('/api/db/admin/user-growth');
+
+            if (result.success) {
+                const d = result.data;
+                container.innerHTML =
+                    '<div class="stats-row" style="margin-bottom: 15px;">' +
+                        '<div class="stat-box">' +
+                            '<div class="stat-number">' + (d.total_users || 0) + '</div>' +
+                            '<div class="stat-label">Total Users</div>' +
+                        '</div>' +
+                        '<div class="stat-box">' +
+                            '<div class="stat-number" style="color: #4caf50;">' + (d.today || 0) + '</div>' +
+                            '<div class="stat-label">Today</div>' +
+                        '</div>' +
+                        '<div class="stat-box">' +
+                            '<div class="stat-number" style="color: #4fc3f7;">' + (d.this_week || 0) + '</div>' +
+                            '<div class="stat-label">This Week</div>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="service-list">' +
+                        '<div class="service-item"><span class="service-name">This Month</span><span style="color: #4fc3f7; font-weight: 600;">' + (d.this_month || 0) + '</span></div>' +
+                        '<div class="service-item"><span class="service-name">Vendors</span><span style="color: #ff9800; font-weight: 600;">' + (d.vendors || 0) + '</span></div>' +
+                        '<div class="service-item"><span class="service-name">Shoppers</span><span style="color: #4caf50; font-weight: 600;">' + (d.shoppers || 0) + '</span></div>' +
+                    '</div>';
+                showRawResponse(result.data, '/api/db/admin/user-growth');
+            } else {
+                container.innerHTML = '<div class="error-message">' + result.error + '</div>';
+            }
+            updateLastUpdated();
+        }
+
+        async function checkAdPerformance() {
+            const container = document.getElementById('adPerformanceContent');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
+
+            const result = await fetchAPI('/api/db/admin/ad-analytics');
+
+            if (result.success) {
+                const ads = result.data.ads || [];
+                const count = result.data.count || 0;
+
+                if (count === 0) {
+                    container.innerHTML = '<div class="service-item"><span class="service-name">No active ads</span></div>';
+                } else {
+                    let totalImpressions = 0;
+                    let totalClicks = 0;
+                    ads.forEach(function(a) {
+                        totalImpressions += (a.impression_count || 0);
+                        totalClicks += (a.click_count || 0);
+                    });
+                    const ctr = totalImpressions > 0 ? ((totalClicks / totalImpressions) * 100).toFixed(1) : '0.0';
+
+                    let html = '<div class="stats-row" style="margin-bottom: 15px;">' +
+                        '<div class="stat-box">' +
+                            '<div class="stat-number">' + count + '</div>' +
+                            '<div class="stat-label">Active Ads</div>' +
+                        '</div>' +
+                        '<div class="stat-box">' +
+                            '<div class="stat-number">' + totalImpressions.toLocaleString() + '</div>' +
+                            '<div class="stat-label">Impressions</div>' +
+                        '</div>' +
+                        '<div class="stat-box">' +
+                            '<div class="stat-number" style="color: #4caf50;">' + ctr + '%</div>' +
+                            '<div class="stat-label">CTR</div>' +
+                        '</div>' +
+                    '</div>';
+
+                    html += '<div class="service-list" style="max-height: 150px; overflow-y: auto;">';
+                    var topAds = ads.slice(0, 5);
+                    for (var i = 0; i < topAds.length; i++) {
+                        var ad = topAds[i];
+                        html += '<div class="service-item">' +
+                            '<span class="service-name">' + (ad.placement || 'Unknown') + '</span>' +
+                            '<span style="color: #4fc3f7; font-weight: 600;">' + (ad.impression_count || 0) + ' imp</span>' +
+                        '</div>';
+                    }
+                    html += '</div>';
+                    container.innerHTML = html;
+                }
+                showRawResponse(result.data, '/api/db/admin/ad-analytics');
+            } else {
+                container.innerHTML = '<div class="error-message">' + result.error + '</div>';
+            }
+            updateLastUpdated();
+        }
+
+        async function checkPushHealth() {
+            const container = document.getElementById('pushHealthContent');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
+
+            const result = await fetchAPI('/api/db/admin/push/token-count');
+
+            if (result.success) {
+                const count = result.data.count || 0;
+                const statusColor = count > 0 ? '#4caf50' : '#ff9800';
+                const statusText = count > 0 ? 'Active' : 'No Tokens';
+
+                container.innerHTML =
+                    '<div class="stats-row">' +
+                        '<div class="stat-box">' +
+                            '<div class="stat-number">' + count + '</div>' +
+                            '<div class="stat-label">Push Tokens</div>' +
+                        '</div>' +
+                        '<div class="stat-box">' +
+                            '<div class="stat-number" style="color: ' + statusColor + ';">' + statusText + '</div>' +
+                            '<div class="stat-label">Status</div>' +
+                        '</div>' +
+                    '</div>';
+                showRawResponse(result.data, '/api/db/admin/push/token-count');
+            } else {
+                container.innerHTML = '<div class="error-message">' + result.error + '</div>';
+            }
+            updateLastUpdated();
+        }
+
+        async function checkScraperHealth() {
+            const container = document.getElementById('scraperHealthContent');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
+
+            const result = await fetchAPI('/api/scrape/stats');
+
+            if (result.success) {
+                const d = result.data;
+                const scraped = d.successfully_scraped || 0;
+                const total = d.vendors_with_website || 0;
+                const pct = total > 0 ? ((scraped / total) * 100).toFixed(0) : '0';
+                const failed = d.failed_scrape || 0;
+                const failColor = failed > 5 ? '#e74c3c' : (failed > 0 ? '#ff9800' : '#4caf50');
+
+                container.innerHTML =
+                    '<div class="stats-row" style="margin-bottom: 15px;">' +
+                        '<div class="stat-box">' +
+                            '<div class="stat-number">' + scraped + '/' + total + '</div>' +
+                            '<div class="stat-label">Scraped (' + pct + '%)</div>' +
+                        '</div>' +
+                        '<div class="stat-box">' +
+                            '<div class="stat-number" style="color: ' + failColor + ';">' + failed + '</div>' +
+                            '<div class="stat-label">Failed</div>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="service-list">' +
+                        '<div class="service-item"><span class="service-name">Total Vendors</span><span style="font-weight: 600;">' + (d.total_vendors || 0) + '</span></div>' +
+                        '<div class="service-item"><span class="service-name">Pending</span><span style="color: #ff9800; font-weight: 600;">' + (d.pending_scrape || 0) + '</span></div>' +
+                        '<div class="service-item"><span class="service-name">Products</span><span style="color: #4fc3f7; font-weight: 600;">' + (d.total_scraped_products || 0) + '</span></div>' +
+                        '<div class="service-item"><span class="service-name">Images</span><span style="color: #4fc3f7; font-weight: 600;">' + (d.total_uploaded_images || 0) + '</span></div>' +
+                        '<div class="service-item"><span class="service-name">Pinecone Vectors</span><span style="color: #4fc3f7; font-weight: 600;">' + (d.total_pinecone_vectors || 0) + '</span></div>' +
+                    '</div>';
+                showRawResponse(result.data, '/api/scrape/stats');
+            } else {
+                container.innerHTML = '<div class="error-message">' + result.error + '</div>';
+            }
+            updateLastUpdated();
+        }
+
+        async function checkEmailDelivery() {
+            const container = document.getElementById('emailDeliveryContent');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
+
+            const [shopperResult, vendorResult] = await Promise.all([
+                fetchAPI('/api/db/admin/newsletter/subscribers?list_type=shopper'),
+                fetchAPI('/api/db/admin/newsletter/subscribers?list_type=vendor')
+            ]);
+
+            let shopperCount = 0;
+            let vendorCount = 0;
+            if (shopperResult.success) shopperCount = shopperResult.data.count || 0;
+            if (vendorResult.success) vendorCount = vendorResult.data.count || 0;
+            const total = shopperCount + vendorCount;
+            const statusColor = total > 0 ? '#4caf50' : '#ff9800';
+
+            container.innerHTML =
+                '<div class="stats-row" style="margin-bottom: 15px;">' +
+                    '<div class="stat-box">' +
+                        '<div class="stat-number">' + total + '</div>' +
+                        '<div class="stat-label">Subscribers</div>' +
+                    '</div>' +
+                    '<div class="stat-box">' +
+                        '<div class="stat-number" style="color: ' + statusColor + ';">' + (total > 0 ? 'Healthy' : 'Empty') + '</div>' +
+                        '<div class="stat-label">Status</div>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="service-list">' +
+                    '<div class="service-item"><span class="service-name">Shopper List</span><span style="color: #4fc3f7; font-weight: 600;">' + shopperCount + '</span></div>' +
+                    '<div class="service-item"><span class="service-name">Vendor List</span><span style="color: #ff9800; font-weight: 600;">' + vendorCount + '</span></div>' +
+                '</div>';
+            showRawResponse({ shoppers: shopperCount, vendors: vendorCount, total: total }, 'Email Delivery');
+            updateLastUpdated();
+        }
+
         // Product Management Functions
         async function loadVendorDropdown() {
             const select = document.getElementById('vendorSelect');
@@ -2427,6 +2712,11 @@ function getDashboardHTML() {
             setTimeout(function() { loadBanners(); }, 5400);
             setTimeout(function() { checkAdMarketplace(); }, 5700);
             setTimeout(function() { checkAdWaitlist(); }, 6000);
+            setTimeout(function() { checkUserGrowth(); }, 6300);
+            setTimeout(function() { checkAdPerformance(); }, 6600);
+            setTimeout(function() { checkPushHealth(); }, 6900);
+            setTimeout(function() { checkScraperHealth(); }, 7200);
+            setTimeout(function() { checkEmailDelivery(); }, 7500);
         }
 
         // Ad Marketplace Management
