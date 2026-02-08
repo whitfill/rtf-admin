@@ -1275,6 +1275,8 @@ function getDashboardHTML() {
                 const claudeCalls = data.claude_calls || 0;
                 const totalQueries = data.total_queries || 0;
                 const freePercent = parseFloat(data.free_percentage) || 0;
+                const last30 = data.last_30_days || {};
+                const today = data.today || 0;
 
                 container.innerHTML =
                     '<div class="stats-row" style="margin-bottom: 15px;">' +
@@ -1292,6 +1294,8 @@ function getDashboardHTML() {
                         '</div>' +
                     '</div>' +
                     '<div class="service-list">' +
+                        '<div class="service-item"><span class="service-name">Today</span><span style="color: #4fc3f7; font-weight: 600;">' + today + '</span></div>' +
+                        '<div class="service-item"><span class="service-name">Last 30 Days</span><span style="color: #4fc3f7; font-weight: 600;">' + (last30.total || totalQueries) + '</span></div>' +
                         '<div class="service-item"><span class="service-name">Active Sessions</span><span style="color: #4fc3f7; font-weight: 600;">' + (data.active_sessions || 0) + '</span></div>' +
                         '<div class="service-item"><span class="service-name">Free Tier Usage</span><span style="color: ' + (freePercent > 80 ? '#4caf50' : '#ff9800') + '; font-weight: 600;">' + freePercent.toFixed(0) + '%</span></div>' +
                     '</div>';
@@ -1723,29 +1727,26 @@ function getDashboardHTML() {
             const container = document.getElementById('topFavoritedContent');
             container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
 
-            const result = await fetchAPI('/api/db/vendors');
+            const result = await fetchAPI('/api/db/trending/top-favorited?limit=10');
 
             if (result.success) {
                 const vendors = result.data.vendors || [];
-                const sorted = vendors
-                    .filter(v => v.favorite_count > 0)
-                    .sort((a, b) => (b.favorite_count || 0) - (a.favorite_count || 0))
-                    .slice(0, 5);
 
-                if (sorted.length === 0) {
+                if (vendors.length === 0) {
                     container.innerHTML = '<div style="color: #888; text-align: center; padding: 20px;">No favorites yet</div>';
                 } else {
                     let html = '<div class="service-list">';
-                    for (const v of sorted) {
+                    for (const v of vendors) {
                         html += '<div class="service-item">' +
-                            '<span class="service-name" style="flex: 1;">' + v.business_name + '</span>' +
+                            '<span class="service-name" style="flex: 1;">' + (v.vendor_name || 'Unknown') + '</span>' +
                             '<span style="color: #ffc107; font-weight: 600;">&#11088; ' + v.favorite_count + '</span>' +
                         '</div>';
                     }
                     html += '</div>';
+                    html += '<div class="endpoint-url" style="margin-top: 8px;">Sorted by favorite_count</div>';
                     container.innerHTML = html;
                 }
-                showRawResponse(result.data, '/api/db/vendors (sorted by favorites)');
+                showRawResponse(result.data, '/api/db/trending/top-favorited');
             } else {
                 container.innerHTML = '<div class="error-message">' + result.error + '</div>';
             }
@@ -2301,7 +2302,7 @@ function getDashboardHTML() {
                     html += '<div class="service-list">';
                     for (const v of vendors.slice(0, 3)) {
                         html += '<div class="service-item">' +
-                            '<span class="service-name" style="font-size: 0.85rem;">' + (v.business_name || v.name || 'Unknown') + '</span>' +
+                            '<span class="service-name" style="font-size: 0.85rem;">' + (v.vendor_name || v.business_name || v.name || 'Unknown') + '</span>' +
                             '<span style="color: #4caf50; font-weight: 600;">' + (v.view_count || v.views || 0) + ' views</span>' +
                         '</div>';
                     }
@@ -2327,8 +2328,8 @@ function getDashboardHTML() {
                     html += '<div class="service-list">';
                     for (const s of searches.slice(0, 3)) {
                         html += '<div class="service-item">' +
-                            '<span class="service-name" style="font-size: 0.85rem;">' + (s.query || s.search_term || 'Unknown') + '</span>' +
-                            '<span style="color: #4fc3f7; font-weight: 600;">' + (s.count || s.search_count || 0) + '</span>' +
+                            '<span class="service-name" style="font-size: 0.85rem;">' + (s.search_query || s.query || s.search_term || 'Unknown') + '</span>' +
+                            '<span style="color: #4fc3f7; font-weight: 600;">' + (s.search_count || s.count || 0) + '</span>' +
                         '</div>';
                     }
                     html += '</div></div>';
