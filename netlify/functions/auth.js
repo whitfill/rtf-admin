@@ -488,6 +488,83 @@ function getDashboardHTML() {
             background: #f44336;
             color: white;
         }
+
+        /* Section organization */
+        .section-header {
+            grid-column: 1 / -1;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 10px;
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.2s;
+            border-left: 4px solid #4fc3f7;
+            margin-top: 10px;
+        }
+
+        .section-header:hover {
+            background: rgba(255, 255, 255, 0.07);
+        }
+
+        .section-header h2 {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #fff;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-header .section-count {
+            color: #666;
+            font-size: 0.75rem;
+            font-weight: 400;
+        }
+
+        .section-header .toggle-icon {
+            font-size: 0.7rem;
+            color: #666;
+            transition: transform 0.3s;
+        }
+
+        .section-header.collapsed .toggle-icon {
+            transform: rotate(-90deg);
+        }
+
+        .section-content {
+            display: contents;
+        }
+
+        .section-content.collapsed {
+            display: none;
+        }
+
+        .section-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .section-controls button {
+            background: rgba(255, 255, 255, 0.05);
+            color: #888;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 6px 14px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+        }
+
+        .section-controls button:hover {
+            background: rgba(79, 195, 247, 0.15);
+            color: #4fc3f7;
+            border-color: rgba(79, 195, 247, 0.3);
+        }
     </style>
 </head>
 <body>
@@ -498,6 +575,10 @@ function getDashboardHTML() {
         <p>Admin Dashboard & System Monitor</p>
         <div class="last-updated" id="lastUpdated">Last updated: Never</div>
         <button class="refresh-all-btn" onclick="refreshAll()">Refresh All</button>
+        <div class="section-controls">
+            <button onclick="collapseAll()">Collapse All</button>
+            <button onclick="expandAll()">Expand All</button>
+        </div>
     </div>
 
     <div class="dashboard">
@@ -1223,6 +1304,152 @@ function getDashboardHTML() {
 
         function clearRawResponse() {
             document.getElementById('rawResponse').innerHTML = '<span style="color: #888;">API responses will appear here formatted...</span>';
+        }
+
+        // === Dashboard Section Organization ===
+        function organizeDashboard() {
+            var dashboard = document.querySelector('.dashboard');
+            if (!dashboard) return;
+
+            // Map content element IDs to section IDs
+            var cardMap = {
+                'healthContent': 'system',
+                'statusContent': 'system',
+                'responseTimesContent': 'system',
+                'errorLogContent': 'system',
+                'cronStatusContent': 'system',
+
+                'vendorContent': 'data',
+                'indexContent': 'data',
+                'productSyncContent': 'data',
+                'scraperHealthContent': 'data',
+
+                'userGrowthContent': 'users',
+                'recentActivityContent': 'users',
+                'topFavoritedContent': 'users',
+                'newsletterContent': 'users',
+                'pushHealthContent': 'users',
+
+                'aiStatsContent': 'search',
+                'searchAnalyticsContent': 'search',
+                'popularSearchesContent': 'search',
+
+                'businessUpdatesContent': 'activity',
+                'trendingContent': 'activity',
+                'upcomingShowsContent': 'activity',
+                'emailSystemContent': 'activity',
+                'emailDeliveryContent': 'activity',
+
+                'adPerformanceContent': 'ads',
+                'bannersContent': 'ads',
+                'adMarketplaceContent': 'ads',
+                'adWaitlistContent': 'ads',
+
+                'productManagementContent': 'tools',
+                'actionResult': 'tools',
+                'rawResponse': 'debug'
+            };
+
+            var sections = [
+                { id: 'system', title: 'System & Infrastructure', accent: '#ef5350', icon: '&#9881;' },
+                { id: 'data', title: 'Content & Data', accent: '#42a5f5', icon: '&#128202;' },
+                { id: 'users', title: 'Users & Engagement', accent: '#66bb6a', icon: '&#128101;' },
+                { id: 'search', title: 'Search & AI', accent: '#ab47bc', icon: '&#129302;' },
+                { id: 'activity', title: 'Activity & Content', accent: '#ffa726', icon: '&#128227;' },
+                { id: 'ads', title: 'Advertising', accent: '#ffc107', icon: '&#128444;&#65039;' },
+                { id: 'tools', title: 'Tools & Management', accent: '#26a69a', icon: '&#9889;' },
+                { id: 'debug', title: 'Debug', accent: '#78909c', icon: '&#128203;' }
+            ];
+
+            // Classify all cards
+            var allCards = Array.from(dashboard.querySelectorAll('.card'));
+            var classified = {};
+            var unclassified = [];
+
+            allCards.forEach(function(card) {
+                var section = null;
+
+                // Check by content div IDs
+                var keys = Object.keys(cardMap);
+                for (var i = 0; i < keys.length; i++) {
+                    if (card.querySelector('#' + keys[i])) {
+                        section = cardMap[keys[i]];
+                        break;
+                    }
+                }
+
+                // Check by title text for cards without content IDs
+                if (!section) {
+                    var titleEl = card.querySelector('.card-title');
+                    var titleText = titleEl ? titleEl.textContent.trim() : '';
+                    if (titleText.indexOf('Quick Site Links') !== -1) section = 'tools';
+                    else if (titleText.indexOf('Service Dashboards') !== -1) section = 'tools';
+                    else unclassified.push(card);
+                }
+
+                if (section) {
+                    if (!classified[section]) classified[section] = [];
+                    classified[section].push(card);
+                }
+            });
+
+            // Clear and rebuild with sections
+            dashboard.innerHTML = '';
+
+            sections.forEach(function(section) {
+                var cards = classified[section.id] || [];
+                if (cards.length === 0) return;
+
+                // Section header
+                var header = document.createElement('div');
+                header.className = 'section-header';
+                header.id = 'header-' + section.id;
+                header.style.borderLeftColor = section.accent;
+                header.innerHTML = '<h2>' + section.icon + ' ' + section.title + ' <span class="section-count">(' + cards.length + ')</span></h2><span class="toggle-icon">&#9660;</span>';
+                header.onclick = (function(sid) {
+                    return function() { toggleSection(sid); };
+                })(section.id);
+                dashboard.appendChild(header);
+
+                // Content wrapper
+                var content = document.createElement('div');
+                content.className = 'section-content';
+                content.id = 'section-' + section.id;
+
+                cards.forEach(function(card) {
+                    content.appendChild(card);
+                });
+
+                dashboard.appendChild(content);
+            });
+
+            // Append any unclassified cards at the end
+            unclassified.forEach(function(card) {
+                dashboard.appendChild(card);
+            });
+        }
+
+        function toggleSection(sectionId) {
+            var content = document.getElementById('section-' + sectionId);
+            var header = document.getElementById('header-' + sectionId);
+            if (content && header) {
+                content.classList.toggle('collapsed');
+                header.classList.toggle('collapsed');
+            }
+        }
+
+        function collapseAll() {
+            var contents = document.querySelectorAll('.section-content');
+            var headers = document.querySelectorAll('.section-header');
+            contents.forEach(function(c) { c.classList.add('collapsed'); });
+            headers.forEach(function(h) { h.classList.add('collapsed'); });
+        }
+
+        function expandAll() {
+            var contents = document.querySelectorAll('.section-content');
+            var headers = document.querySelectorAll('.section-header');
+            contents.forEach(function(c) { c.classList.remove('collapsed'); });
+            headers.forEach(function(h) { h.classList.remove('collapsed'); });
         }
 
         function updateLastUpdated() {
@@ -2928,6 +3155,7 @@ function getDashboardHTML() {
         }
 
         window.onload = function() {
+            organizeDashboard();
             refreshAll();
             loadVendorDropdown();
         };
