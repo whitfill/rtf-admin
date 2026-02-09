@@ -1140,6 +1140,9 @@ function getDashboardHTML() {
                 <a href="https://console.anthropic.com" target="_blank" class="external-link">
                     Anthropic
                 </a>
+                <a href="https://aistudio.google.com" target="_blank" class="external-link">
+                    Google AI Studio
+                </a>
                 <a href="https://resend.com/dashboard" target="_blank" class="external-link">
                     Resend
                 </a>
@@ -1277,8 +1280,9 @@ function getDashboardHTML() {
                 const serviceList = [
                     { name: 'Supabase', key: 'supabase' },
                     { name: 'Pinecone', key: 'pinecone' },
-                    { name: 'Groq LLM', key: 'ai_agent', subkey: 'groq' },
-                    { name: 'Claude AI', key: 'ai_agent', subkey: 'claude' },
+                    { name: 'Claude (Primary)', key: 'ai_agent', subkey: 'claude' },
+                    { name: 'Gemini (Backup)', key: 'ai_agent', subkey: 'gemini' },
+                    { name: 'Groq (Fallback)', key: 'ai_agent', subkey: 'groq' },
                     { name: 'Baseten GPU', key: 'clip_model' },
                 ];
 
@@ -1361,8 +1365,9 @@ function getDashboardHTML() {
 
             if (result.success) {
                 const data = result.data;
-                const groqCalls = data.groq_calls || 0;
                 const claudeCalls = data.claude_calls || 0;
+                const geminiCalls = data.gemini_calls || 0;
+                const groqCalls = data.groq_calls || 0;
                 const totalQueries = data.total_queries || 0;
                 const freePercent = parseFloat(data.free_percentage) || 0;
                 const last30 = data.last_30_days || {};
@@ -1380,14 +1385,19 @@ function getDashboardHTML() {
                 const slowColor = slowCount === 0 ? '#4caf50' : slowCount < 5 ? '#ff9800' : '#f44336';
 
                 container.innerHTML =
+                    '<div style="font-size: 0.75rem; color: #888; margin-bottom: 8px;">Claude (primary) → Gemini (backup) → Groq (fallback)</div>' +
                     '<div class="stats-row" style="margin-bottom: 15px;">' +
                         '<div class="stat-box">' +
-                            '<div class="stat-number" style="color: #4caf50;">' + groqCalls + '</div>' +
-                            '<div class="stat-label">Groq (Free)</div>' +
+                            '<div class="stat-number" style="color: #c084fc;">' + claudeCalls + '</div>' +
+                            '<div class="stat-label">Claude</div>' +
                         '</div>' +
                         '<div class="stat-box">' +
-                            '<div class="stat-number" style="color: #ff9800;">' + claudeCalls + '</div>' +
-                            '<div class="stat-label">Claude (Paid)</div>' +
+                            '<div class="stat-number" style="color: #4fc3f7;">' + geminiCalls + '</div>' +
+                            '<div class="stat-label">Gemini</div>' +
+                        '</div>' +
+                        '<div class="stat-box">' +
+                            '<div class="stat-number" style="color: #4caf50;">' + groqCalls + '</div>' +
+                            '<div class="stat-label">Groq</div>' +
                         '</div>' +
                         '<div class="stat-box">' +
                             '<div class="stat-number">' + (data.cost_estimate || '$0.00') + '</div>' +
