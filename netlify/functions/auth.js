@@ -1368,6 +1368,17 @@ function getDashboardHTML() {
                 const last30 = data.last_30_days || {};
                 const today = data.today || 0;
 
+                const perf = data.performance || {};
+                const avgMs = perf.avg_response_ms || 0;
+                const p95Ms = perf.p95_response_ms || 0;
+                const fastPct = perf.fast_path_pct || 0;
+                const slowCount = perf.slow_queries || 0;
+
+                // Color coding for response times
+                const avgColor = avgMs < 5000 ? '#4caf50' : avgMs < 10000 ? '#ff9800' : '#f44336';
+                const p95Color = p95Ms < 8000 ? '#4caf50' : p95Ms < 15000 ? '#ff9800' : '#f44336';
+                const slowColor = slowCount === 0 ? '#4caf50' : slowCount < 5 ? '#ff9800' : '#f44336';
+
                 container.innerHTML =
                     '<div class="stats-row" style="margin-bottom: 15px;">' +
                         '<div class="stat-box">' +
@@ -1383,11 +1394,27 @@ function getDashboardHTML() {
                             '<div class="stat-label">Est. Cost</div>' +
                         '</div>' +
                     '</div>' +
+                    '<div style="font-size: 0.8rem; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; margin: 15px 0 8px; padding-top: 12px; border-top: 1px solid #333;">Response Performance (30d)</div>' +
+                    '<div class="stats-row" style="margin-bottom: 15px;">' +
+                        '<div class="stat-box">' +
+                            '<div class="stat-number" style="color: ' + avgColor + '; font-size: 1.3rem;">' + (avgMs ? (avgMs / 1000).toFixed(1) + 's' : '—') + '</div>' +
+                            '<div class="stat-label">Avg Response</div>' +
+                        '</div>' +
+                        '<div class="stat-box">' +
+                            '<div class="stat-number" style="color: ' + p95Color + '; font-size: 1.3rem;">' + (p95Ms ? (p95Ms / 1000).toFixed(1) + 's' : '—') + '</div>' +
+                            '<div class="stat-label">P95 Response</div>' +
+                        '</div>' +
+                        '<div class="stat-box">' +
+                            '<div class="stat-number" style="color: ' + (fastPct > 30 ? '#4caf50' : '#4fc3f7') + '; font-size: 1.3rem;">' + fastPct + '%</div>' +
+                            '<div class="stat-label">Fast Path</div>' +
+                        '</div>' +
+                    '</div>' +
                     '<div class="service-list">' +
                         '<div class="service-item"><span class="service-name">Today</span><span style="color: #4fc3f7; font-weight: 600;">' + today + '</span></div>' +
                         '<div class="service-item"><span class="service-name">Last 30 Days</span><span style="color: #4fc3f7; font-weight: 600;">' + (last30.total || totalQueries) + '</span></div>' +
                         '<div class="service-item"><span class="service-name">Active Sessions</span><span style="color: #4fc3f7; font-weight: 600;">' + (data.active_sessions || 0) + '</span></div>' +
                         '<div class="service-item"><span class="service-name">Free Tier Usage</span><span style="color: ' + (freePercent > 80 ? '#4caf50' : '#ff9800') + '; font-weight: 600;">' + freePercent.toFixed(0) + '%</span></div>' +
+                        '<div class="service-item"><span class="service-name">Slow Queries (>10s)</span><span style="color: ' + slowColor + '; font-weight: 600;">' + slowCount + '</span></div>' +
                     '</div>';
                 showRawResponse(result.data, '/api/agent/stats');
             } else {
